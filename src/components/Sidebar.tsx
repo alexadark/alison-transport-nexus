@@ -51,7 +51,7 @@ const Sidebar = ({
     path: '/contacts'
   }];
   return <div className="h-screen w-64 bg-sidebar flex flex-col border-r border-border">
-      <div className="p-4 border-b border-border bg-violet-950">
+      <div className="p-4 border-b border-border bg-black">
         <h1 className="text-xl font-bold text-sidebar-foreground">Alison Transport</h1>
       </div>
       <nav className="flex-1 p-2 overflow-y-auto bg-black">
