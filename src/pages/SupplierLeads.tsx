@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/StatusBadge';
@@ -12,6 +13,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import SupplierDetailsView from '@/components/SupplierDetailsView';
+import SupplierLeadsKanban from '@/components/SupplierLeadsKanban';
+import EmailCompositionDialog from '@/components/EmailCompositionDialog';
+
 interface SupplierLead {
   id: string;
   name: string;
@@ -88,15 +92,19 @@ const supplierFormSchema = z.object({
   }),
   source: z.string().optional()
 });
+
 type SupplierFormValues = z.infer<typeof supplierFormSchema>;
+
 const SupplierLeads = () => {
   const [currentTab, setCurrentTab] = useState("all");
+  const [viewType, setViewType] = useState<'list' | 'kanban'>('list');
   const [selectedLead, setSelectedLead] = useState<SupplierLead | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailType, setEmailType] = useState<'intro' | 'followup'>('intro');
   const isMobile = useIsMobile();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+  
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierFormSchema),
     defaultValues: {
@@ -108,7 +116,9 @@ const SupplierLeads = () => {
       source: ""
     }
   });
+  
   const filteredLeads = currentTab === 'all' ? mockLeads : mockLeads.filter(lead => lead.status.toLowerCase() === currentTab.toLowerCase());
+  
   const onSubmit = (data: SupplierFormValues) => {
     // This would send the data to the database in a real application
     console.log("Form submitted:", data);
@@ -118,169 +128,257 @@ const SupplierLeads = () => {
     });
     form.reset();
   };
+  
   const handleViewLead = (lead: SupplierLead) => {
     setSelectedLead(lead);
     setViewDialogOpen(true);
   };
-  const handleAction = (lead: SupplierLead) => {
-    let actionMessage = "";
-    switch (lead.status.toLowerCase()) {
-      case 'new':
-        actionMessage = `Introduction email sent to ${lead.contact.name}`;
-        break;
-      case 'contacted':
-        actionMessage = `Follow-up initiated with ${lead.contact.name}`;
-        break;
-      case 'qualified':
-        actionMessage = `${lead.name} added to CRM`;
-        break;
-      default:
-        actionMessage = `Action performed for ${lead.name}`;
-    }
+  
+  const handleSendIntro = (lead: SupplierLead) => {
+    setSelectedLead(lead);
+    setEmailType('intro');
+    setEmailDialogOpen(true);
+  };
+  
+  const handleFollowUp = (lead: SupplierLead) => {
+    setSelectedLead(lead);
+    setEmailType('followup');
+    setEmailDialogOpen(true);
+  };
+  
+  const handleConvert = (lead: SupplierLead) => {
     toast({
-      title: "Action performed",
-      description: actionMessage
+      title: "Lead converted",
+      description: `${lead.name} has been converted to a customer.`,
     });
   };
-  return <div className="space-y-6 animate-fade-in">
+  
+  const getActionButton = (status: string, lead: SupplierLead) => {
+    switch (status.toLowerCase()) {
+      case 'new':
+        return <Button size="sm" onClick={() => handleSendIntro(lead)} className="bg-status-transit hover:bg-status-transit/90 text-white">Send Intro</Button>;
+      case 'contacted':
+        return <Button size="sm" onClick={() => handleFollowUp(lead)} className="bg-status-followup hover:bg-status-followup/90 text-white">Follow Up</Button>;
+      case 'qualified':
+        return <Button size="sm" onClick={() => handleConvert(lead)} className="bg-red-600 hover:bg-red-500 text-white">Convert</Button>;
+      default:
+        return <Button size="sm" onClick={() => handleViewLead(lead)} variant="outline">View</Button>;
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-xl sm:text-2xl font-bold">Supplier Lead Management</h1>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-status-new hover:bg-status-new/90 text-white self-start">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Supplier
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Supplier Lead</DialogTitle>
-              <DialogDescription>
-                Enter the details of the potential supplier below.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField control={form.control} name="name" render={({
-                field
-              }) => <FormItem>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setViewType(viewType === 'list' ? 'kanban' : 'list')}
+            className="self-start"
+          >
+            {viewType === 'list' ? 'Kanban View' : 'List View'}
+          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-status-new hover:bg-status-new/90 text-white self-start">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Supplier
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add New Supplier Lead</DialogTitle>
+                <DialogDescription>
+                  Enter the details of the potential supplier below.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem>
                       <FormLabel>Company Name</FormLabel>
                       <FormControl>
                         <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Enter company name" {...field} />
                       </FormControl>
-                    </FormItem>} />
-                <FormField control={form.control} name="industry" render={({
-                field
-              }) => <FormItem>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="industry" render={({ field }) => (
+                    <FormItem>
                       <FormLabel>Industry</FormLabel>
                       <FormControl>
                         <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Enter industry" {...field} />
                       </FormControl>
-                    </FormItem>} />
-                <FormField control={form.control} name="location" render={({
-                field
-              }) => <FormItem>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="location" render={({ field }) => (
+                    <FormItem>
                       <FormLabel>Location</FormLabel>
                       <FormControl>
                         <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="City, State" {...field} />
                       </FormControl>
-                    </FormItem>} />
-                <FormField control={form.control} name="contactName" render={({
-                field
-              }) => <FormItem>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="contactName" render={({ field }) => (
+                    <FormItem>
                       <FormLabel>Contact Name</FormLabel>
                       <FormControl>
                         <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Full name" {...field} />
                       </FormControl>
-                    </FormItem>} />
-                <FormField control={form.control} name="contactEmail" render={({
-                field
-              }) => <FormItem>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="contactEmail" render={({ field }) => (
+                    <FormItem>
                       <FormLabel>Contact Email</FormLabel>
                       <FormControl>
                         <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="email@example.com" type="email" {...field} />
                       </FormControl>
-                    </FormItem>} />
-                <FormField control={form.control} name="source" render={({
-                field
-              }) => <FormItem>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="source" render={({ field }) => (
+                    <FormItem>
                       <FormLabel>Source (Optional)</FormLabel>
                       <FormControl>
                         <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="How was this lead found?" {...field} />
                       </FormControl>
-                    </FormItem>} />
-                <DialogFooter>
-                  <Button type="submit" className="text-white">Add Supplier</Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                    </FormItem>
+                  )} />
+                  <DialogFooter>
+                    <Button type="submit" className="text-white">Add Supplier</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      <Tabs defaultValue="all" onValueChange={setCurrentTab} className="w-full">
-        <TabsList className="w-full sm:w-auto flex overflow-x-auto">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="new">New</TabsTrigger>
-          <TabsTrigger value="contacted">Contacted</TabsTrigger>
-          <TabsTrigger value="qualified">Qualified</TabsTrigger>
-          <TabsTrigger value="converted">Converted</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="all" className="mt-4">
-          <LeadTable leads={filteredLeads} onView={handleViewLead} onAction={handleAction} isMobile={isMobile} />
-        </TabsContent>
-        <TabsContent value="new" className="mt-4">
-          <LeadTable leads={filteredLeads} onView={handleViewLead} onAction={handleAction} isMobile={isMobile} />
-        </TabsContent>
-        <TabsContent value="contacted" className="mt-4">
-          <LeadTable leads={filteredLeads} onView={handleViewLead} onAction={handleAction} isMobile={isMobile} />
-        </TabsContent>
-        <TabsContent value="qualified" className="mt-4">
-          <LeadTable leads={filteredLeads} onView={handleViewLead} onAction={handleAction} isMobile={isMobile} />
-        </TabsContent>
-        <TabsContent value="converted" className="mt-4">
-          <LeadTable leads={filteredLeads} onView={handleViewLead} onAction={handleAction} isMobile={isMobile} />
-        </TabsContent>
-      </Tabs>
+      {viewType === 'list' ? (
+        <Tabs defaultValue="all" onValueChange={setCurrentTab} className="w-full">
+          <TabsList className="w-full sm:w-auto flex overflow-x-auto">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="new">New</TabsTrigger>
+            <TabsTrigger value="contacted">Contacted</TabsTrigger>
+            <TabsTrigger value="qualified">Qualified</TabsTrigger>
+            <TabsTrigger value="converted">Converted</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="all" className="mt-4">
+            <LeadTable 
+              leads={filteredLeads} 
+              onView={handleViewLead} 
+              onSendIntro={handleSendIntro}
+              onFollowUp={handleFollowUp}
+              onConvert={handleConvert}
+              isMobile={isMobile}
+              getActionButton={getActionButton}
+            />
+          </TabsContent>
+          <TabsContent value="new" className="mt-4">
+            <LeadTable 
+              leads={filteredLeads} 
+              onView={handleViewLead} 
+              onSendIntro={handleSendIntro}
+              onFollowUp={handleFollowUp}
+              onConvert={handleConvert}
+              isMobile={isMobile}
+              getActionButton={getActionButton}
+            />
+          </TabsContent>
+          <TabsContent value="contacted" className="mt-4">
+            <LeadTable 
+              leads={filteredLeads} 
+              onView={handleViewLead} 
+              onSendIntro={handleSendIntro}
+              onFollowUp={handleFollowUp}
+              onConvert={handleConvert}
+              isMobile={isMobile}
+              getActionButton={getActionButton}
+            />
+          </TabsContent>
+          <TabsContent value="qualified" className="mt-4">
+            <LeadTable 
+              leads={filteredLeads} 
+              onView={handleViewLead} 
+              onSendIntro={handleSendIntro}
+              onFollowUp={handleFollowUp}
+              onConvert={handleConvert}
+              isMobile={isMobile}
+              getActionButton={getActionButton}
+            />
+          </TabsContent>
+          <TabsContent value="converted" className="mt-4">
+            <LeadTable 
+              leads={filteredLeads} 
+              onView={handleViewLead} 
+              onSendIntro={handleSendIntro}
+              onFollowUp={handleFollowUp}
+              onConvert={handleConvert}
+              isMobile={isMobile}
+              getActionButton={getActionButton}
+            />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <SupplierLeadsKanban
+          leads={mockLeads}
+          onView={handleViewLead}
+          onSendIntro={handleSendIntro}
+          onFollowUp={handleFollowUp}
+          onConvert={handleConvert}
+        />
+      )}
 
-      {selectedLead && <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Supplier Lead Details</DialogTitle>
-            </DialogHeader>
-            <SupplierDetailsView lead={selectedLead} />
-          </DialogContent>
-        </Dialog>}
-    </div>;
+      {selectedLead && (
+        <>
+          <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Supplier Lead Details</DialogTitle>
+              </DialogHeader>
+              <SupplierDetailsView lead={selectedLead} />
+            </DialogContent>
+          </Dialog>
+          
+          <EmailCompositionDialog
+            open={emailDialogOpen}
+            onOpenChange={setEmailDialogOpen}
+            recipientName={selectedLead.contact.name}
+            recipientEmail={selectedLead.contact.email}
+            subject={emailType === 'intro' ? 
+              `Introduction to Our Logistics Services - ${selectedLead.name}` : 
+              `Follow-up Regarding Our Logistics Services - ${selectedLead.name}`}
+            emailType={emailType}
+          />
+        </>
+      )}
+    </div>
+  );
 };
+
 interface LeadTableProps {
   leads: SupplierLead[];
   onView: (lead: SupplierLead) => void;
-  onAction: (lead: SupplierLead) => void;
+  onSendIntro: (lead: SupplierLead) => void;
+  onFollowUp: (lead: SupplierLead) => void;
+  onConvert: (lead: SupplierLead) => void;
   isMobile: boolean;
+  getActionButton: (status: string, lead: SupplierLead) => React.ReactNode;
 }
+
 const LeadTable = ({
   leads,
   onView,
-  onAction,
-  isMobile
+  onSendIntro,
+  onFollowUp,
+  onConvert,
+  isMobile,
+  getActionButton
 }: LeadTableProps) => {
-  const getActionButton = (status: string, lead: SupplierLead) => {
-    switch (status.toLowerCase()) {
-      case 'new':
-        return <Button size="sm" onClick={() => onAction(lead)} className="bg-status-transit hover:bg-status-transit/90 text-white">Send Intro</Button>;
-      case 'contacted':
-        return <Button size="sm" onClick={() => onAction(lead)} className="bg-status-followup hover:bg-status-followup/90 text-white">Follow Up</Button>;
-      case 'qualified':
-        return <Button size="sm" onClick={() => onAction(lead)} className="bg-red-600 hover:bg-red-500 text-white">Add to CRM</Button>;
-      default:
-        return <Button size="sm" onClick={() => onAction(lead)} variant="outline">View</Button>;
-    }
-  };
   if (isMobile) {
-    return <div className="space-y-4">
-        {leads.map(lead => <div key={lead.id} className="border rounded-lg p-4 space-y-3">
+    return (
+      <div className="space-y-4">
+        {leads.map(lead => (
+          <div key={lead.id} className="border rounded-lg p-4 space-y-3">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-medium">{lead.name}</h3>
@@ -303,10 +401,14 @@ const LeadTable = ({
               </Button>
               {getActionButton(lead.status, lead)}
             </div>
-          </div>)}
-      </div>;
+          </div>
+        ))}
+      </div>
+    );
   }
-  return <div className="border rounded-lg overflow-hidden">
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -322,7 +424,8 @@ const LeadTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {leads.map(lead => <TableRow key={lead.id}>
+            {leads.map(lead => (
+              <TableRow key={lead.id}>
                 <TableCell>
                   <div>
                     <div className="font-medium">{lead.name}</div>
@@ -351,10 +454,13 @@ const LeadTable = ({
                     {getActionButton(lead.status, lead)}
                   </div>
                 </TableCell>
-              </TableRow>)}
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default SupplierLeads;
