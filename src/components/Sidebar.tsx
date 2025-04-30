@@ -41,11 +41,11 @@ const Sidebar = ({ currentPath }: SidebarProps) => {
   ];
 
   return (
-    <div className="h-full w-64 bg-sidebar flex flex-col border-r border-border">
+    <div className="h-screen w-64 bg-sidebar flex flex-col border-r border-border">
       <div className="p-4 border-b border-border">
         <h1 className="text-xl font-bold text-sidebar-foreground">Alison Transport</h1>
       </div>
-      <nav className="flex-1 p-2">
+      <nav className="flex-1 p-2 overflow-y-auto">
         <div className="space-y-1">
           {navItems.map((item) => (
             <NavItem 

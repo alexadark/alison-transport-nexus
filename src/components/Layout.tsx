@@ -24,7 +24,7 @@ const Layout = ({ children }: LayoutProps) => {
   }, [location.pathname, isMobile]);
   
   return (
-    <div className="min-h-screen flex">
+    <div className="flex h-screen w-full overflow-hidden">
       {isMobile ? (
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger asChild>
