@@ -11,6 +11,16 @@ import {
 } from '@/components/ui/select';
 import StatusBadge from '@/components/StatusBadge';
 import { Search, Plus } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 interface Shipment {
   id: string;
@@ -61,6 +71,17 @@ const Shipments = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [agentFilter, setAgentFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isNewShipmentDialogOpen, setIsNewShipmentDialogOpen] = useState<boolean>(false);
+  const [newShipment, setNewShipment] = useState<Partial<Shipment>>({
+    agent: 'Menfield',
+    customer: '',
+    supplier: '',
+    origin: '',
+    destination: '',
+    status: 'Confirmed',
+  });
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState<boolean>(false);
 
   const filteredShipments = mockShipments.filter((shipment) => {
     if (statusFilter !== 'all' && shipment.status !== statusFilter) return false;
@@ -78,14 +99,137 @@ const Shipments = () => {
     return true;
   });
 
+  const handleCreateShipment = () => {
+    if (!newShipment.customer || !newShipment.supplier || !newShipment.origin || !newShipment.destination) {
+      toast.error("Please fill out all required fields");
+      return;
+    }
+    
+    // In a real application, this would be an API call to add the shipment
+    toast.success("Shipment created successfully");
+    setIsNewShipmentDialogOpen(false);
+    setNewShipment({
+      agent: 'Menfield',
+      customer: '',
+      supplier: '',
+      origin: '',
+      destination: '',
+      status: 'Confirmed',
+    });
+  };
+
+  const viewShipment = (id: string) => {
+    setSelectedShipmentId(id);
+    setIsViewDialogOpen(true);
+  };
+
+  const selectedShipment = selectedShipmentId ? mockShipments.find(shipment => shipment.id === selectedShipmentId) : null;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Shipments</h1>
-        <Button className="bg-status-transit hover:bg-status-transit/90">
-          <Plus className="w-4 h-4 mr-2" />
-          New Shipment
-        </Button>
+        <Dialog open={isNewShipmentDialogOpen} onOpenChange={setIsNewShipmentDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-status-transit hover:bg-status-transit/90">
+              <Plus className="w-4 h-4 mr-2" />
+              New Shipment
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Shipment</DialogTitle>
+              <DialogDescription>
+                Add a new shipment to the system. Fill in the required information.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="agent" className="text-right">
+                  Agent
+                </label>
+                <select
+                  id="agent"
+                  value={newShipment.agent}
+                  onChange={(e) => setNewShipment({...newShipment, agent: e.target.value})}
+                  className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="Menfield">Menfield</option>
+                  <option value="AsiaTrade">AsiaTrade</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="customer" className="text-right">
+                  Customer*
+                </label>
+                <Input
+                  id="customer"
+                  value={newShipment.customer}
+                  onChange={(e) => setNewShipment({...newShipment, customer: e.target.value})}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="supplier" className="text-right">
+                  Supplier*
+                </label>
+                <Input
+                  id="supplier"
+                  value={newShipment.supplier}
+                  onChange={(e) => setNewShipment({...newShipment, supplier: e.target.value})}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="origin" className="text-right">
+                  Origin*
+                </label>
+                <Input
+                  id="origin"
+                  value={newShipment.origin}
+                  onChange={(e) => setNewShipment({...newShipment, origin: e.target.value})}
+                  className="col-span-3"
+                  placeholder="City, Country"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="destination" className="text-right">
+                  Destination*
+                </label>
+                <Input
+                  id="destination"
+                  value={newShipment.destination}
+                  onChange={(e) => setNewShipment({...newShipment, destination: e.target.value})}
+                  className="col-span-3"
+                  placeholder="City, Country"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="status" className="text-right">
+                  Status
+                </label>
+                <select
+                  id="status"
+                  value={newShipment.status}
+                  onChange={(e) => setNewShipment({...newShipment, status: e.target.value})}
+                  className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Pickup">Pickup</option>
+                  <option value="In Transit">In Transit</option>
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsNewShipmentDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button className="bg-status-transit hover:bg-status-transit/90" onClick={handleCreateShipment}>
+                Create Shipment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -160,7 +304,7 @@ const Shipments = () => {
                   </td>
                   <td className="px-4 py-4 text-sm">{shipment.deliveryDate}</td>
                   <td className="px-4 py-4 text-sm">
-                    <Button variant="outline" size="sm">View</Button>
+                    <Button variant="outline" size="sm" onClick={() => viewShipment(shipment.id)}>View</Button>
                   </td>
                 </tr>
               ))}
@@ -168,6 +312,64 @@ const Shipments = () => {
           </table>
         </div>
       </div>
+
+      {/* View Shipment Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Shipment Details</DialogTitle>
+          </DialogHeader>
+          {selectedShipment && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-2">
+                <span className="font-medium">Shipment ID:</span>
+                <span className="col-span-2">{selectedShipment.id}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="font-medium">Agent:</span>
+                <span className="col-span-2">{selectedShipment.agent}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="font-medium">Customer:</span>
+                <span className="col-span-2">{selectedShipment.customer}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="font-medium">Supplier:</span>
+                <span className="col-span-2">{selectedShipment.supplier}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="font-medium">Origin:</span>
+                <span className="col-span-2">{selectedShipment.origin}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="font-medium">Destination:</span>
+                <span className="col-span-2">{selectedShipment.destination}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="font-medium">Status:</span>
+                <span className="col-span-2">
+                  <StatusBadge status={selectedShipment.status} />
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="font-medium">Delivery Date:</span>
+                <span className="col-span-2">{selectedShipment.deliveryDate}</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+              <Button className="bg-status-transit hover:bg-status-transit/90" onClick={() => {
+                toast.success(`Shipment ${selectedShipmentId} status updated`);
+                setIsViewDialogOpen(false);
+              }}>
+                Update Status
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

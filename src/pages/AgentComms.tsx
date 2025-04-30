@@ -7,6 +7,15 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, MessageSquare, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Message {
   id: string;
@@ -70,6 +79,12 @@ const AgentComms = () => {
   const [selectedAgent, setSelectedAgent] = useState<string>('Menfield');
   const [selectedThread, setSelectedThread] = useState<string>('thread-1');
   const [messageInput, setMessageInput] = useState<string>('');
+  const [isNewMessageDialogOpen, setIsNewMessageDialogOpen] = useState<boolean>(false);
+  const [newThread, setNewThread] = useState<Partial<Thread>>({
+    title: '',
+    agent: 'Menfield',
+  });
+  const [newMessageContent, setNewMessageContent] = useState<string>('');
 
   const handleSendMessage = () => {
     if (messageInput.trim()) {
@@ -78,14 +93,89 @@ const AgentComms = () => {
     }
   };
 
+  const handleCreateThread = () => {
+    if (!newThread.title || !newMessageContent) {
+      toast.error("Please fill out all required fields");
+      return;
+    }
+    
+    toast.success("New conversation started");
+    setIsNewMessageDialogOpen(false);
+    setNewThread({
+      title: '',
+      agent: 'Menfield',
+    });
+    setNewMessageContent('');
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Agent Communications</h1>
-        <Button className="bg-status-transit hover:bg-status-transit/90">
-          <Plus className="w-4 h-4 mr-2" />
-          New Message
-        </Button>
+        <Dialog open={isNewMessageDialogOpen} onOpenChange={setIsNewMessageDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-status-transit hover:bg-status-transit/90">
+              <Plus className="w-4 h-4 mr-2" />
+              New Message
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Start New Conversation</DialogTitle>
+              <DialogDescription>
+                Create a new conversation thread with an agent.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="agent" className="text-right">
+                  Agent
+                </label>
+                <select
+                  id="agent"
+                  value={newThread.agent}
+                  onChange={(e) => setNewThread({...newThread, agent: e.target.value})}
+                  className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="Menfield">Menfield</option>
+                  <option value="AsiaTrade">AsiaTrade</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="title" className="text-right">
+                  Subject*
+                </label>
+                <Input
+                  id="title"
+                  value={newThread.title}
+                  onChange={(e) => setNewThread({...newThread, title: e.target.value})}
+                  className="col-span-3"
+                  placeholder="e.g., Quote Request for TechCorp"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="message" className="text-right">
+                  Message*
+                </label>
+                <textarea
+                  id="message"
+                  value={newMessageContent}
+                  onChange={(e) => setNewMessageContent(e.target.value)}
+                  className="col-span-3 flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Type your message here..."
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsNewMessageDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button className="bg-status-transit hover:bg-status-transit/90" onClick={handleCreateThread}>
+                Start Conversation
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
@@ -161,7 +251,41 @@ const AgentComms = () => {
                   className="flex-1"
                 />
                 <div className="flex gap-2">
-                  <Button variant="outline">Create Quote</Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline">Create Quote</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Create Quote from Message</DialogTitle>
+                        <DialogDescription>
+                          Create a new quote based on the information in this thread.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div>
+                          <h3 className="font-medium mb-2">Extracted Information</h3>
+                          <div className="bg-muted/50 border border-border rounded-md p-3 text-sm">
+                            <p><span className="font-medium">Customer:</span> TechCorp</p>
+                            <p><span className="font-medium">Origin:</span> Seattle, WA</p>
+                            <p><span className="font-medium">Destination:</span> Tel Aviv</p>
+                            <p><span className="font-medium">Items:</span> Dome parts (500kg)</p>
+                          </div>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline">Cancel</Button>
+                        <Button 
+                          className="bg-status-transit hover:bg-status-transit/90"
+                          onClick={() => {
+                            toast.success("Quote created successfully");
+                          }}
+                        >
+                          Create Quote
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                   <Button 
                     onClick={handleSendMessage}
                     className="bg-status-transit hover:bg-status-transit/90"

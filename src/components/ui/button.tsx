@@ -44,7 +44,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
     
-    // Ensure text is always white for primary buttons, status-related buttons, etc.
+    // Always ensure text is white for primary buttons, status-related buttons, etc.
     const ensureWhiteText = className?.includes('bg-status') || 
                            className?.includes('bg-primary') || 
                            variant === 'default' || 
@@ -54,7 +54,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         className={cn(
           buttonVariants({ variant, size, className }),
-          ensureWhiteText && !className?.includes('text-') && "text-white"
+          ensureWhiteText && "text-white"
         )}
         ref={ref}
         {...props}
