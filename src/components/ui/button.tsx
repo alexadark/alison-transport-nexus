@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -42,9 +43,19 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    
+    // Ensure text is always white for primary buttons, status-related buttons, etc.
+    const ensureWhiteText = className?.includes('bg-status') || 
+                           className?.includes('bg-primary') || 
+                           variant === 'default' || 
+                           variant === 'destructive';
+                           
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(
+          buttonVariants({ variant, size, className }),
+          ensureWhiteText && !className?.includes('text-') && "text-white"
+        )}
         ref={ref}
         {...props}
       />
