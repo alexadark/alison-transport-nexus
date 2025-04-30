@@ -171,7 +171,12 @@ const Index = () => {
             <CardDescription>Current shipment status breakdown</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer className="h-[220px]">
+            <ChartContainer 
+              className="h-[220px]"
+              config={{
+                status: { color: "#8884d8" }
+              }}
+            >
               <PieChart>
                 <Pie
                   data={statusChartData}
@@ -220,7 +225,12 @@ const Index = () => {
             <CardDescription>Lead progression through sales stages</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer className="h-[250px]">
+            <ChartContainer 
+              className="h-[250px]"
+              config={{
+                leads: { color: "#8884d8" }
+              }}
+            >
               <BarChart data={leadConversionData} margin={{ top: 5, right: 30, bottom: 20, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
