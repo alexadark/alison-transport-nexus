@@ -37,12 +37,14 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
   onConvert
 }) => {
   const { toast } = useToast();
+  // Create a local copy of leads that we can modify when dragging
+  const [localLeads, setLocalLeads] = useState<SupplierLead[]>(leads);
   
   // Group leads by status
-  const newLeads = leads.filter(lead => lead.status.toLowerCase() === 'new');
-  const contactedLeads = leads.filter(lead => lead.status.toLowerCase() === 'contacted');
-  const qualifiedLeads = leads.filter(lead => lead.status.toLowerCase() === 'qualified');
-  const convertedLeads = leads.filter(lead => lead.status.toLowerCase() === 'converted');
+  const newLeads = localLeads.filter(lead => lead.status.toLowerCase() === 'new');
+  const contactedLeads = localLeads.filter(lead => lead.status.toLowerCase() === 'contacted');
+  const qualifiedLeads = localLeads.filter(lead => lead.status.toLowerCase() === 'qualified');
+  const convertedLeads = localLeads.filter(lead => lead.status.toLowerCase() === 'converted');
   
   // Function to handle drag start
   const handleDragStart = (e: React.DragEvent, lead: SupplierLead) => {
@@ -53,14 +55,30 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
   const handleDrop = (e: React.DragEvent, targetStatus: string) => {
     e.preventDefault();
     const leadId = e.dataTransfer.getData('leadId');
-    const lead = leads.find(l => l.id === leadId);
+    const lead = localLeads.find(l => l.id === leadId);
     
-    if (lead) {
-      // In a real app, this would update the lead status in the database
+    if (lead && lead.status.toLowerCase() !== targetStatus.toLowerCase()) {
+      // Update the lead status in our local state
+      const updatedLeads = localLeads.map(l => {
+        if (l.id === leadId) {
+          return { ...l, status: targetStatus };
+        }
+        return l;
+      });
+      
+      setLocalLeads(updatedLeads);
+      
+      // Show toast notification
       toast({
         title: "Lead status updated",
         description: `${lead.name} moved to ${targetStatus} stage.`
       });
+      
+      // Handle specific actions based on the new status
+      if (targetStatus.toLowerCase() === 'converted') {
+        // If moved to converted, trigger the convert action
+        onConvert(lead);
+      }
     }
   };
   
@@ -69,11 +87,16 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
     e.preventDefault();
   };
   
+  // Update local leads when props change
+  React.useEffect(() => {
+    setLocalLeads(leads);
+  }, [leads]);
+  
   // Render a single lead card
   const renderLeadCard = (lead: SupplierLead) => (
     <Card 
       key={lead.id} 
-      className="mb-3 hover:shadow-md transition-shadow" 
+      className="mb-3 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing" 
       draggable={true}
       onDragStart={(e) => handleDragStart(e, lead)}
     >
@@ -154,7 +177,7 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
             </span>
           </h3>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-3 min-h-[100px]">
           {newLeads.map(renderLeadCard)}
         </div>
       </div>
@@ -174,7 +197,7 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
             </span>
           </h3>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-3 min-h-[100px]">
           {contactedLeads.map(renderLeadCard)}
         </div>
       </div>
@@ -194,7 +217,7 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
             </span>
           </h3>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-3 min-h-[100px]">
           {qualifiedLeads.map(renderLeadCard)}
         </div>
       </div>
@@ -214,7 +237,7 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
             </span>
           </h3>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-3 min-h-[100px]">
           {convertedLeads.map(renderLeadCard)}
         </div>
       </div>
