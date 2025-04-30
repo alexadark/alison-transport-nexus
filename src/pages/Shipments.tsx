@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -358,53 +357,55 @@ const Shipments = () => {
         </div>
       </div>
 
-      <TabsContent value="table" className={activeTab === 'table' ? 'block' : 'hidden'}>
-        <div className="border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">ID</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Agent</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Customer</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Supplier</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Origin</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Destination</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Delivery Date</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredShipments.map((shipment) => (
-                  <tr key={shipment.id} className="hover:bg-muted/50">
-                    <td className="px-4 py-4 text-sm">{shipment.id}</td>
-                    <td className="px-4 py-4 text-sm">{shipment.agent}</td>
-                    <td className="px-4 py-4 text-sm">{shipment.customer}</td>
-                    <td className="px-4 py-4 text-sm">{shipment.supplier}</td>
-                    <td className="px-4 py-4 text-sm">{shipment.origin}</td>
-                    <td className="px-4 py-4 text-sm">{shipment.destination}</td>
-                    <td className="px-4 py-4 text-sm">
-                      <StatusBadge status={shipment.status} />
-                    </td>
-                    <td className="px-4 py-4 text-sm">{shipment.deliveryDate}</td>
-                    <td className="px-4 py-4 text-sm">
-                      <Button variant="outline" size="sm" onClick={() => viewShipment(shipment.id)}>View</Button>
-                    </td>
+      <Tabs value={activeTab} className="mt-6">
+        <TabsContent value="table">
+          <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-muted">
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">ID</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Agent</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Customer</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Supplier</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Origin</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Destination</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Delivery Date</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredShipments.map((shipment) => (
+                    <tr key={shipment.id} className="hover:bg-muted/50">
+                      <td className="px-4 py-4 text-sm">{shipment.id}</td>
+                      <td className="px-4 py-4 text-sm">{shipment.agent}</td>
+                      <td className="px-4 py-4 text-sm">{shipment.customer}</td>
+                      <td className="px-4 py-4 text-sm">{shipment.supplier}</td>
+                      <td className="px-4 py-4 text-sm">{shipment.origin}</td>
+                      <td className="px-4 py-4 text-sm">{shipment.destination}</td>
+                      <td className="px-4 py-4 text-sm">
+                        <StatusBadge status={shipment.status} />
+                      </td>
+                      <td className="px-4 py-4 text-sm">{shipment.deliveryDate}</td>
+                      <td className="px-4 py-4 text-sm">
+                        <Button variant="outline" size="sm" onClick={() => viewShipment(shipment.id)}>View</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      </TabsContent>
+        </TabsContent>
 
-      <TabsContent value="kanban" className={activeTab === 'kanban' ? 'block' : 'hidden'}>
-        <ShipmentsKanban 
-          shipments={filteredShipments} 
-          onView={viewShipment}
-        />
-      </TabsContent>
+        <TabsContent value="kanban">
+          <ShipmentsKanban 
+            shipments={filteredShipments} 
+            onView={viewShipment}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Enhanced Shipment Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
