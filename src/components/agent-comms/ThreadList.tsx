@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ConversationThread } from '@/types/conversations';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,6 +23,27 @@ export const ThreadList = ({
   selectedAgent,
   setSelectedAgent,
 }: ThreadListProps) => {
+  // Extract unique agent names from thread data
+  const availableAgents = useMemo(() => {
+    if (!threads || threads.length === 0) {
+      return [];
+    }
+    
+    const agentSet = new Set<string>();
+    
+    // Add each agent name to the Set (automatically removes duplicates)
+    threads.forEach(thread => {
+      if (thread.agent_name) {
+        agentSet.add(thread.agent_name);
+      }
+    });
+    
+    // Convert Set to Array for rendering
+    return Array.from(agentSet);
+  }, [threads]);
+  
+  console.log("Available agents:", availableAgents);
+  
   return (
     <div className="col-span-12 md:col-span-4 border rounded-lg overflow-hidden">
       <div className="p-4 bg-muted">
@@ -32,8 +53,9 @@ export const ThreadList = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Agents</SelectItem>
-            <SelectItem value="Menfield">Menfield</SelectItem>
-            <SelectItem value="AsiaTrade">AsiaTrade</SelectItem>
+            {availableAgents.map(agent => (
+              <SelectItem key={agent} value={agent}>{agent}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
