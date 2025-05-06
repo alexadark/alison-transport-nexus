@@ -38,15 +38,18 @@ export const useLatestConversationSummary = (threadId: string) => {
       if (error) throw error;
       
       // Parse JSON if it's a string
-      if (data && data.length > 0 && typeof data[0].summary_data === 'string') {
+      if (data && data.length > 0) {
         try {
-          data[0].summary_data = JSON.parse(data[0].summary_data);
+          if (typeof data[0].summary_data === 'string') {
+            data[0].summary_data = JSON.parse(data[0].summary_data);
+          }
         } catch (e) {
           console.error('Error parsing summary_data JSON:', e);
+          data[0].summary_data = null; // Set to null if parsing fails
         }
       }
       
-      return data[0] as ConversationSummary || null;
+      return data && data.length > 0 ? data[0] as ConversationSummary : null;
     },
     enabled: !!threadId
   });
