@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import StatusBadge from '@/components/StatusBadge';
 import { Package, FileText, Eye } from 'lucide-react';
+import ShippingOrderDetails from './ShippingOrderDetails';
 
 interface ShippingOrderTrackerProps {
   orders: ShippingOrder[];
@@ -19,6 +20,10 @@ interface ShippingOrderTrackerProps {
 const ShippingOrderTracker: React.FC<ShippingOrderTrackerProps> = ({ orders, isLoading }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  
+  // New state for selected order and dialog
+  const [selectedOrder, setSelectedOrder] = useState<ShippingOrder | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   // Extract unique statuses from orders
   const uniqueStatuses = [...new Set(orders.map(order => order.status))];
@@ -35,6 +40,11 @@ const ShippingOrderTracker: React.FC<ShippingOrderTrackerProps> = ({ orders, isL
     
     return matchesSearch && matchesStatus;
   });
+
+  const handleViewOrder = (order: ShippingOrder) => {
+    setSelectedOrder(order);
+    setDialogOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -124,7 +134,12 @@ const ShippingOrderTracker: React.FC<ShippingOrderTrackerProps> = ({ orders, isL
                       {order.requesteddeliverydate ? format(new Date(order.requesteddeliverydate), 'MMM dd, yyyy') : "N/A"}
                     </TableCell>
                     <TableCell>
-                      <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleViewOrder(order)}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -143,6 +158,13 @@ const ShippingOrderTracker: React.FC<ShippingOrderTrackerProps> = ({ orders, isL
           </div>
         )}
       </CardContent>
+
+      {/* Order details dialog */}
+      <ShippingOrderDetails 
+        order={selectedOrder} 
+        open={dialogOpen} 
+        onOpenChange={setDialogOpen} 
+      />
     </Card>
   );
 };

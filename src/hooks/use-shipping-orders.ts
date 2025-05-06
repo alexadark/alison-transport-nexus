@@ -53,6 +53,10 @@ export const useShippingOrders = () => {
 
     fetchShippingOrders();
   }, []);
+  
+  const getOrderById = (id: string): ShippingOrder | undefined => {
+    return orders.find(order => order.id === id);
+  };
 
-  return { orders, isLoading, error };
+  return { orders, isLoading, error, getOrderById };
 };
