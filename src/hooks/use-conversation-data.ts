@@ -36,6 +36,16 @@ export const useLatestConversationSummary = (threadId: string) => {
         .limit(1);
       
       if (error) throw error;
+      
+      // Parse JSON if it's a string
+      if (data && data.length > 0 && typeof data[0].summary_data === 'string') {
+        try {
+          data[0].summary_data = JSON.parse(data[0].summary_data);
+        } catch (e) {
+          console.error('Error parsing summary_data JSON:', e);
+        }
+      }
+      
       return data[0] as ConversationSummary || null;
     },
     enabled: !!threadId

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +19,7 @@ import { useConversationThreads, useLatestConversationSummary, useThreadEmails }
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { ConversationSummaryData } from '@/types/conversations';
 
 const AgentComms = () => {
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
@@ -62,6 +62,76 @@ const AgentComms = () => {
       setSelectedThread(threads[0].id);
     }
   }, [threads, selectedThread]);
+
+  // Display formatted summary data
+  const renderSummaryContent = (summaryData: ConversationSummaryData | null) => {
+    if (!summaryData) return null;
+    
+    return (
+      <div className="space-y-2">
+        {summaryData.summary && (
+          <p className="text-sm">{summaryData.summary}</p>
+        )}
+        
+        <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+          {summaryData.startedBy && (
+            <div>
+              <span className="font-semibold">Started by:</span> {summaryData.startedBy}
+            </div>
+          )}
+          
+          {summaryData.sentTo && summaryData.sentTo.length > 0 && (
+            <div>
+              <span className="font-semibold">Sent to:</span> {summaryData.sentTo.join(', ')}
+            </div>
+          )}
+          
+          {summaryData.startDate && (
+            <div>
+              <span className="font-semibold">Start date:</span> {summaryData.startDate}
+            </div>
+          )}
+
+          {summaryData.customer && (
+            <div>
+              <span className="font-semibold">Customer:</span> {summaryData.customer}
+            </div>
+          )}
+
+          {summaryData.origin && (
+            <div>
+              <span className="font-semibold">Origin:</span> {summaryData.origin}
+            </div>
+          )}
+
+          {summaryData.destination && (
+            <div>
+              <span className="font-semibold">Destination:</span> {summaryData.destination}
+            </div>
+          )}
+
+          {summaryData.items && (
+            <div className="col-span-2">
+              <span className="font-semibold">Items:</span> {summaryData.items}
+            </div>
+          )}
+
+          {/* Display any additional fields that might be present */}
+          {Object.entries(summaryData)
+            .filter(([key]) => !['startedBy', 'sentTo', 'startDate', 'summary', 'customer', 'origin', 'destination', 'items'].includes(key))
+            .map(([key, value]) => (
+              <div key={key} className={typeof value === 'string' && value.length > 30 ? 'col-span-2' : undefined}>
+                <span className="font-semibold">{key.charAt(0).toUpperCase() + key.slice(1)}:</span> {
+                  typeof value === 'string' ? value : 
+                  Array.isArray(value) ? value.join(', ') : 
+                  JSON.stringify(value)
+                }
+              </div>
+            ))}
+        </div>
+      </div>
+    );
+  };
 
   const handleSendMessage = async () => {
     if (messageInput.trim()) {
@@ -287,55 +357,20 @@ const AgentComms = () => {
                     <Skeleton className="h-24 w-full mb-4" />
                   ) : latestSummary ? (
                     <div className="bg-muted/50 border border-border rounded-md p-3 mb-4">
-                      <div className="flex items-center mb-2">
+                      <div className="flex items-center justify-between mb-2">
                         <span className="font-medium text-sm">Conversation Summary</span>
-                        <span className="text-xs text-muted-foreground ml-2">
+                        <span className="text-xs text-muted-foreground">
                           {format(new Date(latestSummary.updated_at), 'MMM dd, yyyy HH:mm')}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground">{latestSummary.summary_text}</p>
+                      {renderSummaryContent(latestSummary.summary_data)}
                     </div>
                   ) : null}
                   
-                  {/* Email messages */}
-                  {emailsLoading ? (
-                    Array(3).fill(0).map((_, index) => (
-                      <div key={index} className="space-y-2">
-                        <Skeleton className="h-4 w-1/3 mb-1" />
-                        <Skeleton className="h-16 w-full" />
-                      </div>
-                    ))
-                  ) : emailsError ? (
-                    <div className="text-destructive">Error loading messages: {emailsError.message}</div>
-                  ) : emails && emails.length > 0 ? (
-                    emails.map((email) => (
-                      <div key={email.id} className="space-y-1">
-                        <div className="flex items-center">
-                          <span className="font-medium text-sm">
-                            {email.sender_name || 'Unknown'} 
-                            {email.sender_email ? ` (${email.sender_email})` : ''}
-                          </span>
-                          <span className="text-xs text-muted-foreground ml-2">
-                            {email.received_at ? format(new Date(email.received_at), 'MMM dd, yyyy HH:mm') : 'Unknown date'}
-                          </span>
-                          {email.direction && (
-                            <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
-                              email.direction === 'inbound' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                            }`}>
-                              {email.direction === 'inbound' ? 'Received' : 'Sent'}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm p-3 bg-muted/30 rounded-md">
-                          {email.message_content || <span className="text-muted-foreground italic">No content</span>}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-muted-foreground p-4">
-                      No messages in this conversation yet
-                    </div>
-                  )}
+                  {/* No emails are shown if there's a summary */}
+                  <div className="text-center text-muted-foreground p-4">
+                    No messages in this conversation yet
+                  </div>
                 </div>
                 <div className="p-4 border-t mt-auto">
                   <div className="flex gap-2">

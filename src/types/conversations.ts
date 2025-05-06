@@ -8,10 +8,22 @@ export interface ConversationThread {
   updated_at: string | null;
 }
 
+export interface ConversationSummaryData {
+  startedBy?: string;
+  sentTo?: string[];
+  startDate?: string;
+  summary?: string;
+  customer?: string;
+  origin?: string;
+  destination?: string;
+  items?: string;
+  [key: string]: any; // For any additional fields
+}
+
 export interface ConversationSummary {
   id: string;
   summary_text: string;
-  summary_data: any | null;
+  summary_data: ConversationSummaryData | null;
   conversation_thread_id: string;
   attachment_links: any | null;
   updated_at: string;
