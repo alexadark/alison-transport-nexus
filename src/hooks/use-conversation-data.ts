@@ -46,17 +46,29 @@ export const useLatestConversationSummary = (threadId: string) => {
       
       console.log('Retrieved summary data:', data);
       
-      // Parse JSON if it's a string
+      // Process the summary data
       if (data && data.length > 0) {
-        try {
-          if (typeof data[0].summary_data === 'string') {
-            data[0].summary_data = JSON.parse(data[0].summary_data);
-            console.log('Parsed summary data:', data[0].summary_data);
+        // First check if summary_data is already processed
+        if (!data[0].summary_data && data[0].summary_text) {
+          try {
+            // Try to parse the summary_text as JSON
+            data[0].summary_data = JSON.parse(data[0].summary_text);
+            console.log('Parsed summary_data from summary_text:', data[0].summary_data);
+          } catch (e) {
+            console.error('Error parsing summary_text JSON:', e);
+            data[0].summary_data = null;
           }
-        } catch (e) {
-          console.error('Error parsing summary_data JSON:', e);
-          data[0].summary_data = null; // Set to null if parsing fails
+        } else if (typeof data[0].summary_data === 'string') {
+          // If summary_data is a string, try to parse it
+          try {
+            data[0].summary_data = JSON.parse(data[0].summary_data as string);
+            console.log('Parsed string summary_data to object:', data[0].summary_data);
+          } catch (e) {
+            console.error('Error parsing summary_data string:', e);
+            data[0].summary_data = null;
+          }
         }
+        
         return data[0] as ConversationSummary;
       }
       
