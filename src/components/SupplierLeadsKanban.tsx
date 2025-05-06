@@ -5,21 +5,8 @@ import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/StatusBadge';
 import { Eye, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface SupplierLead {
-  id: string;
-  name: string;
-  industry: string;
-  contact: {
-    name: string;
-    email: string;
-  };
-  source: string;
-  location: string;
-  status: string;
-  firstDetected: string;
-  lastContact: string;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { SupplierLead } from '@/hooks/use-leads';
 
 interface SupplierLeadsKanbanProps {
   leads: SupplierLead[];
@@ -52,7 +39,7 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
   };
   
   // Function to handle drop
-  const handleDrop = (e: React.DragEvent, targetStatus: string) => {
+  const handleDrop = async (e: React.DragEvent, targetStatus: string) => {
     e.preventDefault();
     const leadId = e.dataTransfer.getData('leadId');
     const lead = localLeads.find(l => l.id === leadId);
@@ -73,11 +60,34 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
         title: "Lead status updated",
         description: `${lead.name} moved to ${targetStatus} stage.`
       });
-      
-      // Handle specific actions based on the new status
-      if (targetStatus.toLowerCase() === 'converted') {
-        // If moved to converted, trigger the convert action
-        onConvert(lead);
+
+      // Update the status in the database
+      try {
+        const { error } = await supabase
+          .from('leads')
+          .update({ status: targetStatus })
+          .eq('id', leadId);
+
+        if (error) {
+          console.error('Error updating lead status in database:', error);
+          throw error;
+        }
+        
+        // Handle specific actions based on the new status
+        if (targetStatus.toLowerCase() === 'converted') {
+          // If moved to converted, trigger the convert action
+          onConvert(lead);
+        }
+      } catch (err) {
+        console.error('Error updating lead status:', err);
+        toast({
+          title: "Error",
+          description: "Failed to update lead status. Please try again.",
+          variant: "destructive"
+        });
+        
+        // Revert the local state change on error
+        setLocalLeads(localLeads);
       }
     }
   };
@@ -104,7 +114,7 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
         <div className="flex justify-between items-start">
           <div className="space-y-1">
             <h3 className="font-medium">{lead.name}</h3>
-            <p className="text-xs text-muted-foreground">{lead.industry}</p>
+            <p className="text-xs text-muted-foreground">{lead.industry || 'General'}</p>
           </div>
           <StatusBadge status={lead.status} />
         </div>
@@ -112,7 +122,7 @@ const SupplierLeadsKanban: React.FC<SupplierLeadsKanbanProps> = ({
         <div className="text-xs">
           <p><span className="text-muted-foreground">Contact:</span> {lead.contact.name}</p>
           <p><span className="text-muted-foreground">Email:</span> {lead.contact.email}</p>
-          <p><span className="text-muted-foreground">Location:</span> {lead.location}</p>
+          <p><span className="text-muted-foreground">Location:</span> {lead.location || 'Unknown'}</p>
         </div>
         
         <div className="flex flex-wrap gap-2 pt-1">

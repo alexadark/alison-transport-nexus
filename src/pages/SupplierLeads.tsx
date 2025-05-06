@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/StatusBadge';
@@ -14,63 +15,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import SupplierDetailsView from '@/components/SupplierDetailsView';
 import SupplierLeadsKanban from '@/components/SupplierLeadsKanban';
 import EmailCompositionDialog from '@/components/EmailCompositionDialog';
-
-interface SupplierLead {
-  id: string;
-  name: string;
-  industry: string;
-  contact: {
-    name: string;
-    email: string;
-  };
-  source: string;
-  location: string;
-  status: string;
-  firstDetected: string;
-  lastContact: string;
-}
-
-// Mock data for demonstration
-const mockLeads: SupplierLead[] = [{
-  id: 'SL-001',
-  name: 'QuickShip Parts',
-  industry: 'Manufacturing',
-  contact: {
-    name: 'Michael Roberts',
-    email: 'm.roberts@quickship.com'
-  },
-  source: 'Detected from Order SH-007',
-  location: 'Dallas, TX',
-  status: 'New',
-  firstDetected: '04/29/2025',
-  lastContact: '-'
-}, {
-  id: 'SL-002',
-  name: 'TechSupply Inc.',
-  industry: 'Electronics',
-  contact: {
-    name: 'Jennifer Lee',
-    email: 'j.lee@techsupply.com'
-  },
-  source: 'Quote QR-103',
-  location: 'Chicago, IL',
-  status: 'Contacted',
-  firstDetected: '04/27/2025',
-  lastContact: '04/28/2025'
-}, {
-  id: 'SL-003',
-  name: 'Dome Parts Inc.',
-  industry: 'Industrial',
-  contact: {
-    name: 'Robert Johnson',
-    email: 'r.johnson@domeparts.com'
-  },
-  source: 'Detected from Order SH-002',
-  location: 'Seattle, WA',
-  status: 'Qualified',
-  firstDetected: '04/15/2025',
-  lastContact: '04/25/2025'
-}];
+import { useLeads, SupplierLead } from '@/hooks/use-leads';
+import { supabase } from '@/integrations/supabase/client';
+import { Input } from '@/components/ui/input';
 
 // Form schema for adding a new supplier
 const supplierFormSchema = z.object({
@@ -101,8 +48,17 @@ const SupplierLeads = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailType, setEmailType] = useState<'intro' | 'followup'>('intro');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  
+  // Use our custom hook to fetch leads
+  const { data: leads = [], isLoading, error } = useLeads(searchQuery);
+  
+  // Handle errors
+  if (error) {
+    console.error('Error loading leads:', error);
+  }
   
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierFormSchema),
@@ -116,16 +72,54 @@ const SupplierLeads = () => {
     }
   });
   
-  const filteredLeads = currentTab === 'all' ? mockLeads : mockLeads.filter(lead => lead.status.toLowerCase() === currentTab.toLowerCase());
+  const filteredLeads = currentTab === 'all' ? leads : leads.filter(lead => lead.status.toLowerCase() === currentTab.toLowerCase());
   
-  const onSubmit = (data: SupplierFormValues) => {
-    // This would send the data to the database in a real application
-    console.log("Form submitted:", data);
-    toast({
-      title: "Supplier added",
-      description: `${data.name} has been added as a new supplier lead.`
-    });
-    form.reset();
+  const onSubmit = async (data: SupplierFormValues) => {
+    try {
+      // Create a new lead in the database
+      const { error: contactError, data: contactData } = await supabase
+        .from('contacts')
+        .insert({
+          company_name: data.name,
+          contact_name: data.contactName,
+          email: data.contactEmail,
+          // Split location into city and country if possible
+          city: data.location.split(',')[0]?.trim() || data.location,
+          country: data.location.split(',')[1]?.trim() || '',
+          contact_type: 'Supplier'
+        })
+        .select('id')
+        .single();
+      
+      if (contactError) throw contactError;
+      
+      // Create the lead with a reference to the contact
+      const { error: leadError } = await supabase
+        .from('leads')
+        .insert({
+          contact_id: contactData.id,
+          supplier_contact_name: data.contactName,
+          supplier_email: data.contactEmail,
+          status: 'New',
+          is_quote_lead: true,
+          source_email_id: data.source || null,
+        });
+      
+      if (leadError) throw leadError;
+      
+      toast({
+        title: "Supplier added",
+        description: `${data.name} has been added as a new supplier lead.`
+      });
+      form.reset();
+    } catch (err) {
+      console.error('Error adding supplier lead:', err);
+      toast({
+        title: "Error",
+        description: "Failed to add supplier lead. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleViewLead = (lead: SupplierLead) => {
@@ -145,11 +139,28 @@ const SupplierLeads = () => {
     setEmailDialogOpen(true);
   };
   
-  const handleConvert = (lead: SupplierLead) => {
-    toast({
-      title: "Lead converted",
-      description: `${lead.name} has been converted to a customer.`,
-    });
+  const handleConvert = async (lead: SupplierLead) => {
+    try {
+      // Update the lead status to Converted in the database
+      const { error } = await supabase
+        .from('leads')
+        .update({ status: 'Converted' })
+        .eq('id', lead.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Lead converted",
+        description: `${lead.name} has been converted to a customer.`,
+      });
+    } catch (err) {
+      console.error('Error converting lead:', err);
+      toast({
+        title: "Error",
+        description: "Failed to convert lead. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const getActionButton = (status: string, lead: SupplierLead) => {
@@ -251,7 +262,30 @@ const SupplierLeads = () => {
         </div>
       </div>
 
-      {viewType === 'list' ? (
+      <div className="relative max-w-md mx-auto md:mx-0">
+        <Input 
+          className="pl-3" 
+          placeholder="Search leads..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="border rounded-lg p-4 animate-pulse">
+              <div className="h-6 bg-muted rounded w-3/4 mb-2"></div>
+              <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
+              <div className="space-y-2">
+                <div className="h-4 bg-muted rounded w-full"></div>
+                <div className="h-4 bg-muted rounded w-full"></div>
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : viewType === 'list' ? (
         <Tabs defaultValue="all" onValueChange={setCurrentTab} className="w-full">
           <TabsList className="w-full sm:w-auto flex overflow-x-auto">
             <TabsTrigger value="all">All</TabsTrigger>
@@ -319,7 +353,7 @@ const SupplierLeads = () => {
         </Tabs>
       ) : (
         <SupplierLeadsKanban
-          leads={mockLeads}
+          leads={leads}
           onView={handleViewLead}
           onSendIntro={handleSendIntro}
           onFollowUp={handleFollowUp}
