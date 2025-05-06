@@ -1,21 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-
-interface SupplierLead {
-  id: string;
-  name: string;
-  industry: string;
-  contact: {
-    name: string;
-    email: string;
-  };
-  source: string;
-  location: string;
-  status: string;
-  firstDetected: string;
-  lastContact: string;
-}
+import { SupplierLead } from '@/hooks/use-leads';
 
 interface SupplierDetailsViewProps {
   lead: SupplierLead;
@@ -39,11 +25,11 @@ const SupplierDetailsView = ({ lead }: SupplierDetailsViewProps) => {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Industry:</span>
-                <span>{lead.industry}</span>
+                <span>{lead.industry || 'General'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Location:</span>
-                <span>{lead.location}</span>
+                <span>{lead.location || 'Unknown'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status:</span>
@@ -76,7 +62,7 @@ const SupplierDetailsView = ({ lead }: SupplierDetailsViewProps) => {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Source:</span>
-              <span>{lead.source}</span>
+              <span>{lead.source || 'Unknown'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">First Detected:</span>
@@ -84,7 +70,7 @@ const SupplierDetailsView = ({ lead }: SupplierDetailsViewProps) => {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Last Contact:</span>
-              <span>{lead.lastContact}</span>
+              <span>{lead.lastContact || '-'}</span>
             </div>
           </div>
         </CardContent>

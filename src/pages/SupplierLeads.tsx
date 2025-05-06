@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/StatusBadge';
@@ -388,6 +387,7 @@ const SupplierLeads = () => {
   );
 };
 
+// Update LeadTableProps interface to use the SupplierLead from use-leads.ts
 interface LeadTableProps {
   leads: SupplierLead[];
   onView: (lead: SupplierLead) => void;
