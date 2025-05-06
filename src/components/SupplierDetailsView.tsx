@@ -1,13 +1,19 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 import { SupplierLead } from '@/hooks/use-leads';
+import { useLeadInteractions } from '@/hooks/use-lead-interactions';
+import { MessageItem } from '@/components/agent-comms/MessageItem';
 
 interface SupplierDetailsViewProps {
   lead: SupplierLead;
 }
 
 const SupplierDetailsView = ({ lead }: SupplierDetailsViewProps) => {
+  const { data: interactions, isLoading: interactionsLoading } = useLeadInteractions(lead);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -79,11 +85,35 @@ const SupplierDetailsView = ({ lead }: SupplierDetailsViewProps) => {
       <Card>
         <CardContent className="pt-6">
           <h3 className="text-lg font-semibold mb-2">Interaction History</h3>
-          <div className="text-sm text-muted-foreground italic">
-            {lead.status === 'New' ? 
-              "No interactions recorded yet." : 
-              "Interaction history will be displayed here."}
-          </div>
+          {interactionsLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : interactions && interactions.length > 0 ? (
+            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+              {interactions.map((email) => (
+                <div key={email.id} className="border rounded-md p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-sm">{email.sender_name || email.sender_email}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {email.received_at ? format(new Date(email.received_at), 'MMM dd, yyyy HH:mm') : ''}
+                    </span>
+                  </div>
+                  <div className="text-sm">
+                    {email.subject && <p className="font-medium mb-1">{email.subject}</p>}
+                    <p className="whitespace-pre-wrap text-muted-foreground">{email.message_content}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground italic">
+              {lead.status === 'New' ? 
+                "No interactions recorded yet." : 
+                "No interaction history found for this lead."}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
