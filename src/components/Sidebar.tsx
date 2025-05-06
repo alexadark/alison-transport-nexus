@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Truck, PackageCheck, Quote, Users, MessageSquare, ChartBar } from 'lucide-react';
+import { Truck, PackageCheck, Quote, Users, MessageSquare, ChartBar, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 interface NavItemProps {
   icon: React.ReactNode;
@@ -33,6 +34,10 @@ const Sidebar = ({
     icon: <Truck className="w-5 h-5" />,
     label: 'Shipments',
     path: '/shipments'
+  }, {
+    icon: <Package className="w-5 h-5" />,
+    label: 'Shipping Orders',
+    path: '/shipping-orders'
   }, {
     icon: <Quote className="w-5 h-5" />,
     label: 'Quotes',
