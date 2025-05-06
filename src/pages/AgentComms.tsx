@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -57,16 +57,37 @@ const AgentComms = () => {
     error: summaryError
   } = useLatestConversationSummary(selectedThread);
 
+  // Debug logs to track data
+  useEffect(() => {
+    if (threads) {
+      console.log('Loaded threads:', threads.length);
+    }
+    
+    if (latestSummary) {
+      console.log('Latest summary:', latestSummary);
+    }
+    
+    if (emails) {
+      console.log('Emails count:', emails.length);
+    }
+  }, [threads, latestSummary, emails]);
+
   // Set the first thread as selected if none is selected yet
-  React.useEffect(() => {
+  useEffect(() => {
     if (threads && threads.length > 0 && !selectedThread) {
       setSelectedThread(threads[0].id);
+      console.log('Setting initial thread:', threads[0].id);
     }
   }, [threads, selectedThread]);
 
   // Display formatted summary data
   const renderSummaryContent = (summaryData: ConversationSummaryData | null) => {
-    if (!summaryData) return null;
+    if (!summaryData) {
+      console.log('No summary data to render');
+      return <p className="text-sm text-muted-foreground">No summary information available.</p>;
+    }
+    
+    console.log('Rendering summary data:', summaryData);
     
     return (
       <div className="space-y-2">
@@ -366,17 +387,22 @@ const AgentComms = () => {
                       </div>
                       {renderSummaryContent(latestSummary.summary_data)}
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="bg-muted/50 border border-border rounded-md p-3 mb-4">
+                      <p className="text-sm text-muted-foreground">No summary available for this conversation.</p>
+                    </div>
+                  )}
                   
                   {/* Display emails if available */}
+                  <h3 className="font-medium text-sm border-b pb-2">Messages</h3>
                   {emailsLoading ? (
-                    <div className="space-y-4">
+                    <div className="space-y-4 mt-4">
                       {Array(2).fill(0).map((_, i) => (
                         <Skeleton key={i} className="h-24 w-full" />
                       ))}
                     </div>
                   ) : emails && emails.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="space-y-4 mt-4">
                       {emails.map((email) => (
                         <div 
                           key={email.id}
@@ -399,7 +425,7 @@ const AgentComms = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center text-muted-foreground p-4">
+                    <div className="text-center text-muted-foreground p-4 mt-4">
                       No messages in this conversation yet
                     </div>
                   )}
