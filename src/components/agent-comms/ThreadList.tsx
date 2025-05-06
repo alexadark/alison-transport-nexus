@@ -33,6 +33,7 @@ export const ThreadList = ({
     
     // Add each agent name to the Set (automatically removes duplicates)
     threads.forEach(thread => {
+      // Only add the agent if it exists
       if (thread.agent_name) {
         agentSet.add(thread.agent_name);
       }

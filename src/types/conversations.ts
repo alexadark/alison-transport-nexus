@@ -1,4 +1,3 @@
-
 export interface ConversationThread {
   id: string;
   subject: string | null;
@@ -6,6 +5,7 @@ export interface ConversationThread {
   status: string | null;
   created_at: string | null;
   updated_at: string | null;
+  agent_name?: string | null; // Added agent_name as an optional property
 }
 
 export interface ConversationSummaryData {
