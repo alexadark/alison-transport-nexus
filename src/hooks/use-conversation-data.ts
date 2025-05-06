@@ -89,54 +89,61 @@ export const useThreadEmails = (threadId: string) => {
       
       console.log('Fetching emails for thread:', threadId);
       
-      // Make sure we're explicitly filtering by the thread_id column
-      const { data, error } = await supabase
+      // First try to find emails with matching thread_id
+      const { data: threadEmails, error: threadError } = await supabase
         .from('emails')
         .select('*')
         .eq('thread_id', threadId)
         .order('received_at', { ascending: true });
       
-      if (error) {
-        console.error('Error fetching thread emails:', error);
-        throw error;
+      if (threadError) {
+        console.error('Error fetching thread emails:', threadError);
+        throw threadError;
       }
       
-      // Log the results for debugging
-      console.log(`Retrieved ${data?.length || 0} emails for thread ${threadId}:`, data);
+      // If we found emails directly linked to the thread, return them
+      if (threadEmails && threadEmails.length > 0) {
+        console.log(`Found ${threadEmails.length} emails with thread_id ${threadId}`);
+        return threadEmails as Email[];
+      }
       
-      // If no data or empty array, return empty array to avoid null issues
-      if (!data || data.length === 0) {
-        // Let's try to manually insert a test email for debugging
-        try {
-          const { data: newEmail, error: insertError } = await supabase
-            .from('emails')
-            .insert({
-              thread_id: threadId,
-              sender_name: 'Test User',
-              sender_email: 'test@example.com',
-              subject: 'Test Email for Debug',
-              message_content: 'This is a test email to debug the email display issue.',
-              received_at: new Date().toISOString(),
-              direction: 'inbound',
-              status: 'read'
-            })
-            .select();
-            
-          if (insertError) {
-            console.error('Error inserting test email:', insertError);
-          } else {
-            console.log('Inserted test email for debugging:', newEmail);
-            return newEmail as Email[];
-          }
-        } catch (insertErr) {
-          console.error('Exception when inserting test email:', insertErr);
-        }
-        
-        console.log('No emails found for thread, returning empty array');
+      // If no emails were found by thread_id, try to find by matching subject
+      console.log('No emails found with thread_id, trying to match by subject');
+      
+      // Get the thread to find its subject
+      const { data: threadData, error: threadFetchError } = await supabase
+        .from('conversation_threads')
+        .select('subject')
+        .eq('id', threadId)
+        .single();
+      
+      if (threadFetchError) {
+        console.error('Error fetching thread for subject match:', threadFetchError);
         return [];
       }
       
-      return data as Email[];
+      if (threadData && threadData.subject) {
+        console.log('Looking for emails matching subject:', threadData.subject);
+        
+        const { data: subjectEmails, error: subjectError } = await supabase
+          .from('emails')
+          .select('*')
+          .eq('subject', threadData.subject)
+          .order('received_at', { ascending: true });
+        
+        if (subjectError) {
+          console.error('Error fetching emails by subject:', subjectError);
+          return [];
+        }
+        
+        if (subjectEmails && subjectEmails.length > 0) {
+          console.log(`Found ${subjectEmails.length} emails matching subject "${threadData.subject}"`);
+          return subjectEmails as Email[];
+        }
+      }
+      
+      console.log('No emails found for thread, returning empty array');
+      return [];
     },
     enabled: !!threadId,
     // Ensure data is refetched when threadId changes
