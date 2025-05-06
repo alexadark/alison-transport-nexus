@@ -16,97 +16,133 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-interface Message {
-  id: string;
-  sender: string;
-  content: string;
-  timestamp: string;
-  type: string;
-}
-
-interface Thread {
-  id: string;
-  title: string;
-  agent: string;
-  lastMessage: string;
-  lastTimestamp: string;
-}
-
-// Mock data for demonstration
-const mockThreads: Thread[] = [
-  {
-    id: 'thread-1',
-    title: 'Quote Request - Dome Parts for TechCorp',
-    agent: 'Menfield',
-    lastMessage: 'Sarah Johnson (sarah@menfield.com) - Today',
-    lastTimestamp: '09:32',
-  },
-  {
-    id: 'thread-2',
-    title: 'Pickup Confirmation - SH-002',
-    agent: 'Menfield',
-    lastMessage: 'John Miller (Menfield) - Yesterday',
-    lastTimestamp: '16:45',
-  },
-  {
-    id: 'thread-3',
-    title: 'Delivery Update Request - SH-001',
-    agent: 'Menfield',
-    lastMessage: 'Sarah Johnson (Menfield) - 04/28/2025',
-    lastTimestamp: '11:20',
-  },
-];
-
-const mockMessages: Message[] = [
-  {
-    id: 'msg-1',
-    sender: 'Sarah Johnson (sarah@menfield.com)',
-    content: 'Hello Alison Transport, we have a new quote request from our customer TechCorp for shipping dome parts from Seattle, WA to Tel Aviv. Total weight: 500kg.',
-    timestamp: '04/30/2025 09:32',
-    type: 'received',
-  },
-  {
-    id: 'msg-2',
-    sender: 'AI',
-    content: 'AI Detected: Quote request for TechCorp, Seattle → Tel Aviv, Dome parts (500kg)',
-    timestamp: '04/30/2025 09:33',
-    type: 'system',
-  },
-];
+import { useConversationThreads, useLatestConversationSummary, useThreadEmails } from '@/hooks/use-conversation-data';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
 const AgentComms = () => {
-  const [selectedAgent, setSelectedAgent] = useState<string>('Menfield');
-  const [selectedThread, setSelectedThread] = useState<string>('thread-1');
+  const [selectedAgent, setSelectedAgent] = useState<string>('all');
+  const [selectedThread, setSelectedThread] = useState<string>('');
   const [messageInput, setMessageInput] = useState<string>('');
   const [isNewMessageDialogOpen, setIsNewMessageDialogOpen] = useState<boolean>(false);
-  const [newThread, setNewThread] = useState<Partial<Thread>>({
+  const [newThread, setNewThread] = useState<{
+    title: string;
+    agent: string;
+  }>({
     title: '',
     agent: 'Menfield',
   });
   const [newMessageContent, setNewMessageContent] = useState<string>('');
 
-  const handleSendMessage = () => {
+  // Fetch conversation threads
+  const { 
+    data: threads, 
+    isLoading: threadsLoading, 
+    error: threadsError 
+  } = useConversationThreads(selectedAgent !== 'all' ? selectedAgent : undefined);
+
+  // Fetch emails for the selected thread
+  const {
+    data: emails,
+    isLoading: emailsLoading,
+    error: emailsError
+  } = useThreadEmails(selectedThread);
+
+  // Fetch the latest summary for the selected thread
+  const {
+    data: latestSummary,
+    isLoading: summaryLoading,
+    error: summaryError
+  } = useLatestConversationSummary(selectedThread);
+
+  // Set the first thread as selected if none is selected yet
+  React.useEffect(() => {
+    if (threads && threads.length > 0 && !selectedThread) {
+      setSelectedThread(threads[0].id);
+    }
+  }, [threads, selectedThread]);
+
+  const handleSendMessage = async () => {
     if (messageInput.trim()) {
-      toast.success("Message sent successfully");
-      setMessageInput('');
+      try {
+        // In a real scenario, you would save this message to the database
+        const { error } = await supabase
+          .from('emails')
+          .insert({
+            thread_id: selectedThread,
+            message_content: messageInput,
+            direction: 'outbound',
+            sender_name: 'You',
+            sender_email: 'you@alisonTransport.com',
+            subject: threads?.find(t => t.id === selectedThread)?.subject || 'No Subject',
+            received_at: new Date().toISOString(),
+            status: 'sent'
+          });
+
+        if (error) {
+          throw error;
+        }
+
+        toast.success("Message sent successfully");
+        setMessageInput('');
+      } catch (error: any) {
+        toast.error("Failed to send message: " + error.message);
+      }
     }
   };
 
-  const handleCreateThread = () => {
+  const handleCreateThread = async () => {
     if (!newThread.title || !newMessageContent) {
       toast.error("Please fill out all required fields");
       return;
     }
     
-    toast.success("New conversation started");
-    setIsNewMessageDialogOpen(false);
-    setNewThread({
-      title: '',
-      agent: 'Menfield',
-    });
-    setNewMessageContent('');
+    try {
+      // Create a new thread
+      const { data: newThreadData, error: threadError } = await supabase
+        .from('conversation_threads')
+        .insert({
+          subject: newThread.title,
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (threadError) throw threadError;
+
+      // Create first message in thread
+      const { error: messageError } = await supabase
+        .from('emails')
+        .insert({
+          thread_id: newThreadData.id,
+          message_content: newMessageContent,
+          direction: 'outbound',
+          sender_name: 'You',
+          sender_email: 'you@alisonTransport.com',
+          subject: newThread.title,
+          received_at: new Date().toISOString(),
+          status: 'sent'
+        });
+
+      if (messageError) throw messageError;
+
+      toast.success("New conversation started");
+      setIsNewMessageDialogOpen(false);
+      setSelectedThread(newThreadData.id);
+      setNewThread({
+        title: '',
+        agent: 'Menfield',
+      });
+      setNewMessageContent('');
+    } catch (error: any) {
+      toast.error("Failed to create conversation: " + error.message);
+    }
   };
+
+  if (threadsError) {
+    return <div className="p-4">Error loading conversations: {threadsError.message}</div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -187,6 +223,7 @@ const AgentComms = () => {
                 <SelectValue placeholder="Select agent" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All Agents</SelectItem>
                 <SelectItem value="Menfield">Menfield</SelectItem>
                 <SelectItem value="AsiaTrade">AsiaTrade</SelectItem>
               </SelectContent>
@@ -194,109 +231,180 @@ const AgentComms = () => {
           </div>
           <Separator />
           <div className="h-[calc(100%-64px)] overflow-y-auto">
-            {mockThreads.map((thread) => (
-              <div 
-                key={thread.id}
-                className={`p-4 border-b cursor-pointer hover:bg-muted/50 ${
-                  selectedThread === thread.id ? 'bg-muted' : ''
-                }`}
-                onClick={() => setSelectedThread(thread.id)}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium truncate">{thread.title}</h3>
-                    <p className="text-sm text-muted-foreground truncate">{thread.lastMessage}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground ml-2">{thread.lastTimestamp}</span>
+            {threadsLoading ? (
+              // Loading skeleton
+              Array(3).fill(0).map((_, index) => (
+                <div key={index} className="p-4 border-b">
+                  <Skeleton className="h-5 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2" />
                 </div>
+              ))
+            ) : threads && threads.length > 0 ? (
+              threads.map((thread) => (
+                <div 
+                  key={thread.id}
+                  className={`p-4 border-b cursor-pointer hover:bg-muted/50 ${
+                    selectedThread === thread.id ? 'bg-muted' : ''
+                  }`}
+                  onClick={() => setSelectedThread(thread.id)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium truncate">{thread.subject || 'No Subject'}</h3>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {thread.updated_at ? format(new Date(thread.updated_at), 'MMM dd, yyyy') : 'No date'}
+                      </p>
+                    </div>
+                    {thread.status && (
+                      <span className="text-xs bg-muted-foreground/10 text-muted-foreground px-2 py-1 rounded-full ml-2">
+                        {thread.status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-muted-foreground">
+                No conversations found
               </div>
-            ))}
+            )}
           </div>
         </div>
 
         {/* Message Thread */}
         <Card className="col-span-12 md:col-span-8 h-full flex flex-col">
-          <CardHeader className="border-b pb-3 pt-4">
-            <CardTitle className="text-lg">Quote Request - Dome Parts for TechCorp</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 p-0 flex flex-col">
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {mockMessages.map((message) => (
-                <div 
-                  key={message.id} 
-                  className={`${
-                    message.type === 'system' 
-                      ? 'bg-muted/50 border border-border rounded-md p-3' 
-                      : 'space-y-1'
-                  }`}
-                >
-                  {message.type !== 'system' && (
-                    <div className="flex items-center">
-                      <span className="font-medium text-sm">{message.sender}</span>
-                      <span className="text-xs text-muted-foreground ml-2">{message.timestamp}</span>
+          {selectedThread ? (
+            <>
+              <CardHeader className="border-b pb-3 pt-4">
+                <CardTitle className="text-lg">
+                  {threads?.find(t => t.id === selectedThread)?.subject || 'Loading...'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 p-0 flex flex-col">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {/* Latest conversation summary */}
+                  {summaryLoading ? (
+                    <Skeleton className="h-24 w-full mb-4" />
+                  ) : latestSummary ? (
+                    <div className="bg-muted/50 border border-border rounded-md p-3 mb-4">
+                      <div className="flex items-center mb-2">
+                        <span className="font-medium text-sm">Conversation Summary</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {format(new Date(latestSummary.updated_at), 'MMM dd, yyyy HH:mm')}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{latestSummary.summary_text}</p>
                     </div>
-                  )}
-                  <p className={`text-sm ${message.type === 'system' ? 'text-muted-foreground' : ''}`}>
-                    {message.content}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="p-4 border-t mt-auto">
-              <div className="flex gap-2">
-                <Input 
-                  placeholder="Type your message..." 
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  className="flex-1"
-                />
-                <div className="flex gap-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline">Create Quote</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Create Quote from Message</DialogTitle>
-                        <DialogDescription>
-                          Create a new quote based on the information in this thread.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div>
-                          <h3 className="font-medium mb-2">Extracted Information</h3>
-                          <div className="bg-muted/50 border border-border rounded-md p-3 text-sm">
-                            <p><span className="font-medium">Customer:</span> TechCorp</p>
-                            <p><span className="font-medium">Origin:</span> Seattle, WA</p>
-                            <p><span className="font-medium">Destination:</span> Tel Aviv</p>
-                            <p><span className="font-medium">Items:</span> Dome parts (500kg)</p>
-                          </div>
+                  ) : null}
+                  
+                  {/* Email messages */}
+                  {emailsLoading ? (
+                    Array(3).fill(0).map((_, index) => (
+                      <div key={index} className="space-y-2">
+                        <Skeleton className="h-4 w-1/3 mb-1" />
+                        <Skeleton className="h-16 w-full" />
+                      </div>
+                    ))
+                  ) : emailsError ? (
+                    <div className="text-destructive">Error loading messages: {emailsError.message}</div>
+                  ) : emails && emails.length > 0 ? (
+                    emails.map((email) => (
+                      <div key={email.id} className="space-y-1">
+                        <div className="flex items-center">
+                          <span className="font-medium text-sm">
+                            {email.sender_name || 'Unknown'} 
+                            {email.sender_email ? ` (${email.sender_email})` : ''}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {email.received_at ? format(new Date(email.received_at), 'MMM dd, yyyy HH:mm') : 'Unknown date'}
+                          </span>
+                          {email.direction && (
+                            <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+                              email.direction === 'inbound' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                            }`}>
+                              {email.direction === 'inbound' ? 'Received' : 'Sent'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm p-3 bg-muted/30 rounded-md">
+                          {email.message_content || <span className="text-muted-foreground italic">No content</span>}
                         </div>
                       </div>
-                      <DialogFooter>
-                        <Button variant="outline">Cancel</Button>
-                        <Button 
-                          className="bg-status-transit hover:bg-status-transit/90"
-                          onClick={() => {
-                            toast.success("Quote created successfully");
-                          }}
-                        >
-                          Create Quote
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                  <Button 
-                    onClick={handleSendMessage}
-                    className="bg-status-transit hover:bg-status-transit/90"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    Send
-                  </Button>
+                    ))
+                  ) : (
+                    <div className="text-center text-muted-foreground p-4">
+                      No messages in this conversation yet
+                    </div>
+                  )}
                 </div>
+                <div className="p-4 border-t mt-auto">
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Type your message..." 
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      className="flex-1"
+                    />
+                    <div className="flex gap-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline">Create Quote</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Create Quote from Message</DialogTitle>
+                            <DialogDescription>
+                              Create a new quote based on the information in this thread.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div>
+                              <h3 className="font-medium mb-2">Extracted Information</h3>
+                              <div className="bg-muted/50 border border-border rounded-md p-3 text-sm">
+                                <p><span className="font-medium">Customer:</span> {latestSummary?.summary_data?.customer || 'Not detected'}</p>
+                                <p><span className="font-medium">Origin:</span> {latestSummary?.summary_data?.origin || 'Not detected'}</p>
+                                <p><span className="font-medium">Destination:</span> {latestSummary?.summary_data?.destination || 'Not detected'}</p>
+                                <p><span className="font-medium">Items:</span> {latestSummary?.summary_data?.items || 'Not detected'}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline">Cancel</Button>
+                            <Button 
+                              className="bg-status-transit hover:bg-status-transit/90"
+                              onClick={() => {
+                                toast.success("Quote created successfully");
+                              }}
+                            >
+                              Create Quote
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                      <Button 
+                        onClick={handleSendMessage}
+                        className="bg-status-transit hover:bg-status-transit/90"
+                        disabled={!selectedThread || !messageInput.trim()}
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Send
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </>
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <div className="text-center p-6">
+                <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium">No conversation selected</h3>
+                <p className="text-muted-foreground mt-2">
+                  Select a conversation from the list or create a new one
+                </p>
               </div>
             </div>
-          </CardContent>
+          )}
         </Card>
       </div>
     </div>

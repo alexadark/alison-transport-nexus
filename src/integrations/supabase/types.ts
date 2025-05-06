@@ -60,6 +60,41 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_summaries: {
+        Row: {
+          attachment_links: Json | null
+          conversation_thread_id: string
+          id: string
+          summary_data: Json | null
+          summary_text: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_links?: Json | null
+          conversation_thread_id: string
+          id?: string
+          summary_data?: Json | null
+          summary_text: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_links?: Json | null
+          conversation_thread_id?: string
+          id?: string
+          summary_data?: Json | null
+          summary_text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_summaries_thread_fk"
+            columns: ["conversation_thread_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_threads: {
         Row: {
           created_at: string | null
@@ -206,10 +241,15 @@ export type Database = {
           classification_workflow: string | null
           created_at: string | null
           direction: string | null
+          email_type: string | null
           id: string
+          message_content: string | null
           outlook_message_id: string | null
           received_at: string | null
           sender_contact_id: string | null
+          sender_email: string | null
+          sender_name: string | null
+          status: string | null
           subject: string | null
           thread_id: string | null
           updated_at: string | null
@@ -220,10 +260,15 @@ export type Database = {
           classification_workflow?: string | null
           created_at?: string | null
           direction?: string | null
+          email_type?: string | null
           id?: string
+          message_content?: string | null
           outlook_message_id?: string | null
           received_at?: string | null
           sender_contact_id?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          status?: string | null
           subject?: string | null
           thread_id?: string | null
           updated_at?: string | null
@@ -234,10 +279,15 @@ export type Database = {
           classification_workflow?: string | null
           created_at?: string | null
           direction?: string | null
+          email_type?: string | null
           id?: string
+          message_content?: string | null
           outlook_message_id?: string | null
           received_at?: string | null
           sender_contact_id?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          status?: string | null
           subject?: string | null
           thread_id?: string | null
           updated_at?: string | null
@@ -264,24 +314,42 @@ export type Database = {
           contact_id: string | null
           created_at: string | null
           id: string
+          is_order_lead: boolean | null
+          is_quote_lead: boolean | null
+          originating_thread_id: string | null
           source_email_id: string | null
           status: string | null
+          supplier_contact_name: string | null
+          supplier_email: string | null
+          supplier_phone: string | null
           updated_at: string | null
         }
         Insert: {
           contact_id?: string | null
           created_at?: string | null
           id?: string
+          is_order_lead?: boolean | null
+          is_quote_lead?: boolean | null
+          originating_thread_id?: string | null
           source_email_id?: string | null
           status?: string | null
+          supplier_contact_name?: string | null
+          supplier_email?: string | null
+          supplier_phone?: string | null
           updated_at?: string | null
         }
         Update: {
           contact_id?: string | null
           created_at?: string | null
           id?: string
+          is_order_lead?: boolean | null
+          is_quote_lead?: boolean | null
+          originating_thread_id?: string | null
           source_email_id?: string | null
           status?: string | null
+          supplier_contact_name?: string | null
+          supplier_email?: string | null
+          supplier_phone?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -290,6 +358,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_originating_thread_id_fkey"
+            columns: ["originating_thread_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_threads"
             referencedColumns: ["id"]
           },
           {
@@ -529,6 +604,13 @@ export type Database = {
             columns: ["supplier_contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_orders_thread_fk"
+            columns: ["related_thread_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_threads"
             referencedColumns: ["id"]
           },
         ]
