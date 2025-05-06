@@ -23,7 +23,13 @@ export const MessageList = ({ emails, loading, messageInput, handleSendMessage }
     );
   }
 
-  if (!emails || emails.length === 0) {
+  // Debug output
+  console.log("MessageList - Rendering emails:", emails);
+  
+  // Check if emails is undefined, null, or empty array
+  const hasEmails = emails && emails.length > 0;
+  
+  if (!hasEmails) {
     return (
       <div className="text-center text-muted-foreground p-4 mt-4">
         <p>No messages in this conversation yet</p>
@@ -41,31 +47,31 @@ export const MessageList = ({ emails, loading, messageInput, handleSendMessage }
     );
   }
 
-  // Debug output
-  console.log("Rendering emails:", emails);
-
   return (
     <div className="space-y-4 mt-4">
-      {emails.map((email) => (
-        <div 
-          key={email.id}
-          className={`p-3 rounded-lg ${
-            email.direction === 'outgoing' 
-              ? 'bg-primary/10 ml-8' 
-              : 'bg-muted mr-8'
-          }`}
-        >
-          <div className="flex justify-between items-center mb-1">
-            <span className="font-medium text-sm">
-              {email.sender_name || email.sender_email || 'Unknown'}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {email.received_at ? format(new Date(email.received_at), 'MMM dd, yyyy HH:mm') : 'No date'}
-            </span>
+      {emails.map((email) => {
+        console.log("Rendering email:", email);
+        return (
+          <div 
+            key={email.id}
+            className={`p-3 rounded-lg ${
+              email.direction === 'outgoing' 
+                ? 'bg-primary/10 ml-8' 
+                : 'bg-muted mr-8'
+            }`}
+          >
+            <div className="flex justify-between items-center mb-1">
+              <span className="font-medium text-sm">
+                {email.sender_name || email.sender_email || 'Unknown'}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {email.received_at ? format(new Date(email.received_at), 'MMM dd, yyyy HH:mm') : 'No date'}
+              </span>
+            </div>
+            <p className="text-sm whitespace-pre-wrap">{email.message_content}</p>
           </div>
-          <p className="text-sm whitespace-pre-wrap">{email.message_content}</p>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

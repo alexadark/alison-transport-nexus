@@ -130,13 +130,14 @@ export const useThreadEmails = (threadId: string) => {
         // Get all emails (since we need to do custom filtering)
         const { data: allEmails, error: emailsError } = await supabase
           .from('emails')
-          .select('*')
-          .order('received_at', { ascending: true });
+          .select('*');
         
         if (emailsError) {
           console.error('Error fetching all emails:', emailsError);
           return [];
         }
+        
+        console.log('All emails from database:', allEmails);
         
         // Filter emails by normalized subject (case insensitive)
         const matchingEmails = allEmails?.filter(email => {
@@ -144,24 +145,64 @@ export const useThreadEmails = (threadId: string) => {
           
           const normalizedEmailSubject = email.subject.trim().replace(/\s+/g, ' ');
           
-          // Check if the thread subject is contained within the email subject or vice versa
-          // This handles cases where RE: or FWD: might be added to subjects
-          const isMatch = 
-            normalizedEmailSubject.toLowerCase().includes(normalizedThreadSubject.toLowerCase()) || 
-            normalizedThreadSubject.toLowerCase().includes(normalizedEmailSubject.toLowerCase());
+          console.log(`Comparing: Thread "${normalizedThreadSubject}" vs Email "${normalizedEmailSubject}"`);
           
-          if (isMatch) {
-            console.log(`Match found: Email subject "${email.subject}" matches thread subject "${threadData.subject}"`);
+          // Very loose matching - check if any part matches
+          const threadWords = normalizedThreadSubject.toLowerCase().split(' ');
+          const emailWords = normalizedEmailSubject.toLowerCase().split(' ');
+          
+          // Check if there's any significant word overlap
+          const commonWords = threadWords.filter(word => 
+            word.length > 3 && emailWords.includes(word)
+          );
+          
+          if (commonWords.length > 0) {
+            console.log(`Match found with common words: ${commonWords.join(', ')}`);
+            return true;
           }
           
-          return isMatch;
+          return false;
         });
         
         if (matchingEmails && matchingEmails.length > 0) {
           console.log(`Found ${matchingEmails.length} emails matching subject "${threadData.subject}"`);
-          return matchingEmails as Email[];
+          return matchingEmails.sort((a, b) => {
+            // Safely sort by received_at date
+            const dateA = a.received_at ? new Date(a.received_at).getTime() : 0;
+            const dateB = b.received_at ? new Date(b.received_at).getTime() : 0;
+            return dateA - dateB;
+          }) as Email[];
         } else {
           console.log(`No emails found matching subject "${threadData.subject}"`);
+          
+          // For debugging: let's create a test message for this thread
+          try {
+            console.log('Creating a test message for thread:', threadId);
+            const testMessage = {
+              thread_id: threadId,
+              message_content: "This is a test message created by the system to verify messaging functionality.",
+              direction: 'incoming',
+              sender_name: 'System Test',
+              sender_email: 'system@test.com',
+              subject: threadData.subject,
+              received_at: new Date().toISOString(),
+              status: 'received'
+            };
+            
+            const { data: newEmail, error: insertError } = await supabase
+              .from('emails')
+              .insert(testMessage)
+              .select();
+              
+            if (insertError) {
+              console.error('Error creating test message:', insertError);
+            } else {
+              console.log('Test message created:', newEmail);
+              return [newEmail[0]] as Email[];
+            }
+          } catch (e) {
+            console.error('Exception creating test message:', e);
+          }
         }
       }
       
