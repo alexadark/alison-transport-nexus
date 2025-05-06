@@ -41,6 +41,9 @@ export const MessageList = ({ emails, loading, messageInput, handleSendMessage }
     );
   }
 
+  // Debug output
+  console.log("Rendering emails:", emails);
+
   return (
     <div className="space-y-4 mt-4">
       {emails.map((email) => (

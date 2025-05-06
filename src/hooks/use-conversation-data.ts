@@ -123,22 +123,45 @@ export const useThreadEmails = (threadId: string) => {
       }
       
       if (threadData && threadData.subject) {
-        console.log('Looking for emails matching subject:', threadData.subject);
+        // Clean the subject for comparison (trim and normalize whitespace)
+        const normalizedThreadSubject = threadData.subject.trim().replace(/\s+/g, ' ');
+        console.log('Looking for emails matching subject:', normalizedThreadSubject);
         
-        const { data: subjectEmails, error: subjectError } = await supabase
+        // Get all emails (since we need to do custom filtering)
+        const { data: allEmails, error: emailsError } = await supabase
           .from('emails')
           .select('*')
-          .eq('subject', threadData.subject)
           .order('received_at', { ascending: true });
         
-        if (subjectError) {
-          console.error('Error fetching emails by subject:', subjectError);
+        if (emailsError) {
+          console.error('Error fetching all emails:', emailsError);
           return [];
         }
         
-        if (subjectEmails && subjectEmails.length > 0) {
-          console.log(`Found ${subjectEmails.length} emails matching subject "${threadData.subject}"`);
-          return subjectEmails as Email[];
+        // Filter emails by normalized subject (case insensitive)
+        const matchingEmails = allEmails?.filter(email => {
+          if (!email.subject) return false;
+          
+          const normalizedEmailSubject = email.subject.trim().replace(/\s+/g, ' ');
+          
+          // Check if the thread subject is contained within the email subject or vice versa
+          // This handles cases where RE: or FWD: might be added to subjects
+          const isMatch = 
+            normalizedEmailSubject.toLowerCase().includes(normalizedThreadSubject.toLowerCase()) || 
+            normalizedThreadSubject.toLowerCase().includes(normalizedEmailSubject.toLowerCase());
+          
+          if (isMatch) {
+            console.log(`Match found: Email subject "${email.subject}" matches thread subject "${threadData.subject}"`);
+          }
+          
+          return isMatch;
+        });
+        
+        if (matchingEmails && matchingEmails.length > 0) {
+          console.log(`Found ${matchingEmails.length} emails matching subject "${threadData.subject}"`);
+          return matchingEmails as Email[];
+        } else {
+          console.log(`No emails found matching subject "${threadData.subject}"`);
         }
       }
       
