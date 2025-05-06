@@ -47,7 +47,8 @@ const AgentComms = () => {
   const {
     data: emails,
     isLoading: emailsLoading,
-    error: emailsError
+    error: emailsError,
+    refetch: refetchEmails
   } = useThreadEmails(selectedThread);
 
   // Fetch the latest summary for the selected thread
@@ -56,6 +57,14 @@ const AgentComms = () => {
     isLoading: summaryLoading,
     error: summaryError
   } = useLatestConversationSummary(selectedThread);
+
+  // Set the first thread as selected if none is selected yet
+  useEffect(() => {
+    if (threads && threads.length > 0 && !selectedThread) {
+      setSelectedThread(threads[0].id);
+      console.log('Setting initial thread:', threads[0].id);
+    }
+  }, [threads, selectedThread]);
 
   // Debug logs to track data
   useEffect(() => {
@@ -72,13 +81,13 @@ const AgentComms = () => {
     }
   }, [threads, latestSummary, emails]);
 
-  // Set the first thread as selected if none is selected yet
+  // Effect to refetch emails when thread changes
   useEffect(() => {
-    if (threads && threads.length > 0 && !selectedThread) {
-      setSelectedThread(threads[0].id);
-      console.log('Setting initial thread:', threads[0].id);
+    if (selectedThread) {
+      console.log('Selected thread changed to:', selectedThread);
+      refetchEmails();
     }
-  }, [threads, selectedThread]);
+  }, [selectedThread, refetchEmails]);
 
   // Display formatted summary data
   const renderSummaryContent = (summaryData: ConversationSummaryData | null, summaryText: string | null) => {
@@ -169,31 +178,40 @@ const AgentComms = () => {
   };
 
   const handleSendMessage = async () => {
-    if (messageInput.trim()) {
-      try {
-        // In a real scenario, you would save this message to the database
-        const { error } = await supabase
-          .from('emails')
-          .insert({
-            thread_id: selectedThread,
-            message_content: messageInput,
-            direction: 'outbound',
-            sender_name: 'You',
-            sender_email: 'you@alisonTransport.com',
-            subject: threads?.find(t => t.id === selectedThread)?.subject || 'No Subject',
-            received_at: new Date().toISOString(),
-            status: 'sent'
-          });
+    if (!selectedThread || !messageInput.trim()) {
+      toast.error("Please select a thread and enter a message");
+      return;
+    }
 
-        if (error) {
-          throw error;
-        }
+    try {
+      console.log("Sending message to thread:", selectedThread);
+      const { error, data } = await supabase
+        .from('emails')
+        .insert({
+          thread_id: selectedThread,
+          message_content: messageInput,
+          direction: 'outbound',
+          sender_name: 'You',
+          sender_email: 'you@alisonTransport.com',
+          subject: threads?.find(t => t.id === selectedThread)?.subject || 'No Subject',
+          received_at: new Date().toISOString(),
+          status: 'sent'
+        })
+        .select();
 
-        toast.success("Message sent successfully");
-        setMessageInput('');
-      } catch (error: any) {
-        toast.error("Failed to send message: " + error.message);
+      if (error) {
+        console.error("Error sending message:", error);
+        throw error;
       }
+
+      console.log("Message sent successfully:", data);
+      toast.success("Message sent successfully");
+      setMessageInput('');
+      
+      // Refetch emails to display the new message
+      refetchEmails();
+    } catch (error: any) {
+      toast.error("Failed to send message: " + error.message);
     }
   };
 
@@ -439,7 +457,28 @@ const AgentComms = () => {
                     </div>
                   ) : (
                     <div className="text-center text-muted-foreground p-4 mt-4">
-                      No messages in this conversation yet
+                      <p>No messages in this conversation yet</p>
+                      <div className="flex justify-center mt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            // Create a test message for this thread
+                            handleSendMessage();
+                          }}
+                          disabled={!messageInput.trim()}
+                        >
+                          Send your first message
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Show errors if any */}
+                  {emailsError && (
+                    <div className="text-red-500 p-4 bg-red-50 rounded-md mt-4">
+                      <p className="font-medium">Error loading messages</p>
+                      <p className="text-sm">{(emailsError as Error).message}</p>
                     </div>
                   )}
                 </div>
