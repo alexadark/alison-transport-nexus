@@ -20,96 +20,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-
-interface Contact {
-  id: string;
-  name: string;
-  company: string;
-  type: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  country: string;
-}
-
-// Mock data for demonstration
-const mockContacts: Contact[] = [
-  {
-    id: 'C-001',
-    name: 'Sarah Johnson',
-    company: 'Menfield',
-    type: 'Agent',
-    email: 'sarah@menfield.com',
-    phone: '+1 555-123-4567',
-    address: '123 Logistics Way',
-    city: 'Chicago',
-    country: 'USA',
-  },
-  {
-    id: 'C-002',
-    name: 'John Miller',
-    company: 'Menfield',
-    type: 'Agent',
-    email: 'john@menfield.com',
-    phone: '+1 555-987-6543',
-    address: '123 Logistics Way',
-    city: 'Chicago',
-    country: 'USA',
-  },
-  {
-    id: 'C-003',
-    name: 'Robert Johnson',
-    company: 'Dome Parts Inc.',
-    type: 'Supplier',
-    email: 'r.johnson@domeparts.com',
-    phone: '+1 555-456-7890',
-    address: '456 Industrial Ave',
-    city: 'Seattle',
-    country: 'USA',
-  },
-  {
-    id: 'C-004',
-    name: 'Jennifer Lee',
-    company: 'TechSupply Inc.',
-    type: 'Supplier',
-    email: 'j.lee@techsupply.com',
-    phone: '+1 555-789-0123',
-    address: '789 Tech Blvd',
-    city: 'Chicago',
-    country: 'USA',
-  },
-  {
-    id: 'C-005',
-    name: 'Michael Roberts',
-    company: 'QuickShip Parts',
-    type: 'Supplier',
-    email: 'm.roberts@quickship.com',
-    phone: '+1 555-234-5678',
-    address: '321 Shipping Lane',
-    city: 'Dallas',
-    country: 'USA',
-  },
-  {
-    id: 'C-006',
-    name: 'David Chen',
-    company: 'AsiaTrade',
-    type: 'Agent',
-    email: 'david@asiatrade.com',
-    phone: '+852 5555-8888',
-    address: '88 Harbor Road',
-    city: 'Hong Kong',
-    country: 'China',
-  },
-];
+import { supabase } from '@/integrations/supabase/client';
+import { useContacts } from '@/hooks/use-contacts';
 
 const Contacts = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
-  const [newContact, setNewContact] = useState<Partial<Contact>>({
-    name: '',
-    company: '',
-    type: 'Agent',
+  const [newContact, setNewContact] = useState({
+    contact_name: '',
+    company_name: '',
+    contact_type: 'Agent',
     email: '',
     phone: '',
     address: '',
@@ -119,39 +39,45 @@ const Contacts = () => {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState<boolean>(false);
 
-  const filteredContacts = mockContacts.filter((contact) => {
-    if (!searchQuery) return true;
-    
-    const query = searchQuery.toLowerCase();
-    return (
-      contact.name.toLowerCase().includes(query) ||
-      contact.company.toLowerCase().includes(query) ||
-      contact.type.toLowerCase().includes(query) ||
-      contact.email.toLowerCase().includes(query) ||
-      contact.city.toLowerCase().includes(query) ||
-      contact.country.toLowerCase().includes(query)
-    );
-  });
+  // Use our custom hook to fetch contacts
+  const { data: contacts = [], isLoading, error } = useContacts(searchQuery);
 
-  const handleAddContact = () => {
-    if (!newContact.name || !newContact.email || !newContact.company) {
+  // Handle errors
+  if (error) {
+    console.error('Error loading contacts:', error);
+  }
+
+  const handleAddContact = async () => {
+    if (!newContact.contact_name || !newContact.email || !newContact.company_name) {
       toast.error("Please fill out the required fields");
       return;
     }
     
-    // In a real application, this would be an API call to add the contact
-    toast.success("Contact added successfully");
-    setIsAddDialogOpen(false);
-    setNewContact({
-      name: '',
-      company: '',
-      type: 'Agent',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      country: '',
-    });
+    try {
+      // Insert the new contact into Supabase
+      const { data, error } = await supabase
+        .from('contacts')
+        .insert(newContact)
+        .select();
+      
+      if (error) throw error;
+      
+      toast.success("Contact added successfully");
+      setIsAddDialogOpen(false);
+      setNewContact({
+        contact_name: '',
+        company_name: '',
+        contact_type: 'Agent',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        country: '',
+      });
+    } catch (err) {
+      console.error('Error adding contact:', err);
+      toast.error("Failed to add contact");
+    }
   };
 
   const viewContact = (id: string) => {
@@ -159,7 +85,9 @@ const Contacts = () => {
     setIsViewDialogOpen(true);
   };
 
-  const selectedContact = selectedContactId ? mockContacts.find(contact => contact.id === selectedContactId) : null;
+  const selectedContact = selectedContactId 
+    ? contacts.find(contact => contact.id === selectedContactId) 
+    : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -186,8 +114,8 @@ const Contacts = () => {
                 </label>
                 <Input
                   id="name"
-                  value={newContact.name}
-                  onChange={(e) => setNewContact({...newContact, name: e.target.value})}
+                  value={newContact.contact_name}
+                  onChange={(e) => setNewContact({...newContact, contact_name: e.target.value})}
                   className="col-span-3"
                 />
               </div>
@@ -197,8 +125,8 @@ const Contacts = () => {
                 </label>
                 <Input
                   id="company"
-                  value={newContact.company}
-                  onChange={(e) => setNewContact({...newContact, company: e.target.value})}
+                  value={newContact.company_name}
+                  onChange={(e) => setNewContact({...newContact, company_name: e.target.value})}
                   className="col-span-3"
                 />
               </div>
@@ -208,8 +136,8 @@ const Contacts = () => {
                 </label>
                 <select
                   id="type"
-                  value={newContact.type}
-                  onChange={(e) => setNewContact({...newContact, type: e.target.value})}
+                  value={newContact.contact_type}
+                  onChange={(e) => setNewContact({...newContact, contact_type: e.target.value})}
                   className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="Agent">Agent</option>
@@ -296,44 +224,68 @@ const Contacts = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredContacts.map((contact) => (
-          <Card key={contact.id}>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>{contact.name}</CardTitle>
-                  <CardDescription className="flex items-center mt-1">
-                    {contact.company}
-                    <span className="ml-2 px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-full">
-                      {contact.type}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-2">
+                <div className="h-6 bg-muted rounded w-3/4"></div>
+                <div className="h-4 bg-muted rounded w-1/2 mt-2"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-full"></div>
+                  <div className="h-4 bg-muted rounded w-full"></div>
+                  <div className="h-4 bg-muted rounded w-full"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : contacts.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {contacts.map((contact) => (
+            <Card key={contact.id}>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle>{contact.name}</CardTitle>
+                    <CardDescription className="flex items-center mt-1">
+                      {contact.company}
+                      <span className="ml-2 px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-full">
+                        {contact.type}
+                      </span>
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => viewContact(contact.id)}>View</Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center">
+                    <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
+                    <span>{contact.email}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
+                    <span>{contact.phone || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-start">
+                    <MapPin className="w-4 h-4 mr-2 text-muted-foreground mt-0.5" />
+                    <span>
+                      {[contact.address, contact.city, contact.country].filter(Boolean).join(', ') || 'N/A'}
                     </span>
-                  </CardDescription>
+                  </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => viewContact(contact.id)}>View</Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center">
-                  <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <span>{contact.email}</span>
-                </div>
-                <div className="flex items-center">
-                  <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <span>{contact.phone}</span>
-                </div>
-                <div className="flex items-start">
-                  <MapPin className="w-4 h-4 mr-2 text-muted-foreground mt-0.5" />
-                  <span>
-                    {contact.address}, {contact.city}, {contact.country}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-10">
+          <p className="text-muted-foreground">No contacts found</p>
+        </div>
+      )}
 
       {/* View contact dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
@@ -361,11 +313,13 @@ const Contacts = () => {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="font-medium">Phone:</span>
-                <span className="col-span-2">{selectedContact.phone}</span>
+                <span className="col-span-2">{selectedContact.phone || 'N/A'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="font-medium">Address:</span>
-                <span className="col-span-2">{selectedContact.address}, {selectedContact.city}, {selectedContact.country}</span>
+                <span className="col-span-2">
+                  {[selectedContact.address, selectedContact.city, selectedContact.country].filter(Boolean).join(', ') || 'N/A'}
+                </span>
               </div>
             </div>
           )}
