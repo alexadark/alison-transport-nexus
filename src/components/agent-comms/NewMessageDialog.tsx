@@ -1,8 +1,18 @@
 
 import React from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface NewMessageDialogProps {
   isOpen: boolean;
@@ -11,10 +21,13 @@ interface NewMessageDialogProps {
     title: string;
     agent: string;
   };
-  setNewThread: (thread: { title: string; agent: string; }) => void;
+  setNewThread: React.Dispatch<React.SetStateAction<{
+    title: string;
+    agent: string;
+  }>>;
   newMessageContent: string;
-  setNewMessageContent: (content: string) => void;
-  handleCreateThread: () => void;
+  setNewMessageContent: React.Dispatch<React.SetStateAction<string>>;
+  handleCreateThread: () => Promise<void>;
 }
 
 export const NewMessageDialog = ({
@@ -28,60 +41,62 @@ export const NewMessageDialog = ({
 }: NewMessageDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
-          <DialogTitle>Start New Conversation</DialogTitle>
-          <DialogDescription>
-            Create a new conversation thread with an agent.
-          </DialogDescription>
+          <DialogTitle>New Message</DialogTitle>
         </DialogHeader>
+
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="agent" className="text-right">
-              Agent
-            </label>
-            <select
-              id="agent"
-              value={newThread.agent}
-              onChange={(e) => setNewThread({ ...newThread, agent: e.target.value })}
-              className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="Menfield">Menfield</option>
-              <option value="AsiaTrade">AsiaTrade</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="title" className="text-right">
-              Subject*
-            </label>
+            <Label htmlFor="title" className="text-right">
+              Subject
+            </Label>
             <Input
               id="title"
-              value={newThread.title}
-              onChange={(e) => setNewThread({ ...newThread, title: e.target.value })}
               className="col-span-3"
-              placeholder="e.g., Quote Request for TechCorp"
+              value={newThread.title}
+              onChange={(e) => setNewThread({...newThread, title: e.target.value})}
+              placeholder="Enter message subject"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="message" className="text-right">
-              Message*
-            </label>
-            <textarea
+            <Label htmlFor="agent" className="text-right">
+              Agent
+            </Label>
+            <Select 
+              value={newThread.agent}
+              onValueChange={(value) => setNewThread({...newThread, agent: value})}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select agent" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Menfield">Menfield</SelectItem>
+                <SelectItem value="Shanghai">Shanghai</SelectItem>
+                <SelectItem value="Rotterdam">Rotterdam</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="message" className="text-right">
+              Message
+            </Label>
+            <Textarea
               id="message"
+              className="col-span-3"
               value={newMessageContent}
               onChange={(e) => setNewMessageContent(e.target.value)}
-              className="col-span-3 flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Type your message here..."
+              placeholder="Enter your message"
+              rows={5}
             />
           </div>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-status-transit hover:bg-status-transit/90" onClick={handleCreateThread}>
-            Start Conversation
-          </Button>
+          <Button onClick={handleCreateThread}>Send</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

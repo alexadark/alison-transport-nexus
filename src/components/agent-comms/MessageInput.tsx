@@ -1,73 +1,72 @@
 
 import React from 'react';
 import { Send } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from '@/components/ui/textarea';
 import { ConversationSummaryData } from '@/types/conversations';
 
 interface MessageInputProps {
   messageInput: string;
   setMessageInput: (value: string) => void;
   handleSendMessage: () => void;
-  selectedThread: string | null;
+  selectedThread: string;
   summaryData?: ConversationSummaryData | null;
 }
 
-export const MessageInput = ({ messageInput, setMessageInput, handleSendMessage, selectedThread, summaryData }: MessageInputProps) => {
+export const MessageInput = ({ 
+  messageInput, 
+  setMessageInput, 
+  handleSendMessage,
+  selectedThread,
+  summaryData
+}: MessageInputProps) => {
+  
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (messageInput.trim()) {
+        handleSendMessage();
+      }
+    }
+  };
+
   return (
-    <div className="p-4 border-t mt-auto">
-      <div className="flex gap-2">
-        <Input 
-          placeholder="Type your message..." 
-          value={messageInput}
-          onChange={(e) => setMessageInput(e.target.value)}
-          className="flex-1"
-        />
-        <div className="flex gap-2">
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline">Create Quote</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create Quote from Message</DialogTitle>
-                <DialogDescription>
-                  Create a new quote based on the information in this thread.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div>
-                  <h3 className="font-medium mb-2">Extracted Information</h3>
-                  <div className="bg-muted/50 border border-border rounded-md p-3 text-sm">
-                    <p><span className="font-medium">Customer:</span> {summaryData?.customer || 'Not detected'}</p>
-                    <p><span className="font-medium">Origin:</span> {summaryData?.origin || 'Not detected'}</p>
-                    <p><span className="font-medium">Destination:</span> {summaryData?.destination || 'Not detected'}</p>
-                    <p><span className="font-medium">Items:</span> {summaryData?.items || 'Not detected'}</p>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline">Cancel</Button>
-                <Button 
-                  className="bg-status-transit hover:bg-status-transit/90"
-                  onClick={() => {
-                    // Your toast.success implementation will go here
-                  }}
-                >
-                  Create Quote
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <Button 
+    <div className="border-t p-4 bg-card">
+      <div className="flex flex-col space-y-2">
+        {/* Show context information if available */}
+        {summaryData && (
+          <div className="text-xs text-muted-foreground rounded-md mb-1">
+            <span className="font-medium">Context:</span>
+            {' '}
+            {summaryData.customer ? `Customer: ${summaryData.customer}.` : ''}
+            {' '}
+            {summaryData.origin && summaryData.destination 
+              ? `Route: ${summaryData.origin} to ${summaryData.destination}.` 
+              : ''}
+          </div>
+        )}
+        
+        <div className="relative">
+          <Textarea
+            placeholder="Type your message..."
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            rows={3}
+            className="resize-none pr-12 focus-visible:ring-1"
+            disabled={!selectedThread}
+          />
+          <Button
+            size="icon"
+            className="absolute bottom-2 right-2"
             onClick={handleSendMessage}
-            className="bg-status-transit hover:bg-status-transit/90"
-            disabled={!selectedThread || !messageInput.trim()}
+            disabled={!messageInput.trim() || !selectedThread}
           >
-            <Send className="w-4 h-4 mr-2" />
-            Send
+            <Send className="h-4 w-4" />
           </Button>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Press Shift + Enter for a new line
         </div>
       </div>
     </div>
