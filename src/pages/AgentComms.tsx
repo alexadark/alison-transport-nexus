@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -367,10 +368,41 @@ const AgentComms = () => {
                     </div>
                   ) : null}
                   
-                  {/* No emails are shown if there's a summary */}
-                  <div className="text-center text-muted-foreground p-4">
-                    No messages in this conversation yet
-                  </div>
+                  {/* Display emails if available */}
+                  {emailsLoading ? (
+                    <div className="space-y-4">
+                      {Array(2).fill(0).map((_, i) => (
+                        <Skeleton key={i} className="h-24 w-full" />
+                      ))}
+                    </div>
+                  ) : emails && emails.length > 0 ? (
+                    <div className="space-y-4">
+                      {emails.map((email) => (
+                        <div 
+                          key={email.id}
+                          className={`p-3 rounded-lg ${
+                            email.direction === 'outbound' 
+                              ? 'bg-primary/10 ml-8' 
+                              : 'bg-muted mr-8'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium text-sm">
+                              {email.sender_name || email.sender_email || 'Unknown'}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {email.received_at ? format(new Date(email.received_at), 'MMM dd, yyyy HH:mm') : 'No date'}
+                            </span>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap">{email.message_content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground p-4">
+                      No messages in this conversation yet
+                    </div>
+                  )}
                 </div>
                 <div className="p-4 border-t mt-auto">
                   <div className="flex gap-2">
